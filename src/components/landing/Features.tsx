@@ -9,6 +9,8 @@ import {
   Shield
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { cn } from '@/lib/utils';
 
 const features = [
   {
@@ -54,11 +56,22 @@ const features = [
 ];
 
 export const Features = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation({ threshold: 0.05 });
+
   return (
     <section className="py-20 lg:py-32 bg-muted/30" id="features">
       <div className="container">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-16 transition-all duration-700",
+            headerVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Всё для управления клиникой
           </h2>
@@ -68,11 +81,22 @@ export const Features = () => {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature) => (
+        <div 
+          ref={gridRef}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+          {features.map((feature, index) => (
             <Card 
               key={feature.title} 
-              className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/50"
+              className={cn(
+                "group hover:shadow-lg transition-all duration-500 hover:-translate-y-1 border-border/50",
+                gridVisible 
+                  ? "opacity-100 translate-y-0" 
+                  : "opacity-0 translate-y-8"
+              )}
+              style={{ 
+                transitionDelay: gridVisible ? `${index * 100}ms` : '0ms' 
+              }}
             >
               <CardContent className="p-6">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">

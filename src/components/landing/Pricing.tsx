@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check } from 'lucide-react';
+import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { cn } from '@/lib/utils';
 
 const plans = [
   {
@@ -57,11 +59,22 @@ const plans = [
 ];
 
 export const Pricing = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation({ threshold: 0.1 });
+
   return (
     <section className="py-20 lg:py-32" id="pricing">
       <div className="container">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-16 transition-all duration-700",
+            headerVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Простые и понятные тарифы
           </h2>
@@ -71,15 +84,25 @@ export const Pricing = () => {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {plans.map((plan) => (
+        <div 
+          ref={gridRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+        >
+          {plans.map((plan, index) => (
             <Card 
               key={plan.name} 
-              className={`relative flex flex-col ${
+              className={cn(
+                "relative flex flex-col transition-all duration-500",
                 plan.popular 
                   ? 'border-primary shadow-lg scale-105' 
-                  : 'border-border/50'
-              }`}
+                  : 'border-border/50',
+                gridVisible 
+                  ? "opacity-100 translate-y-0" 
+                  : "opacity-0 translate-y-8"
+              )}
+              style={{ 
+                transitionDelay: gridVisible ? `${index * 150}ms` : '0ms' 
+              }}
             >
               {plan.popular && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">

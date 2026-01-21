@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Play } from 'lucide-react';
+import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { cn } from '@/lib/utils';
 
 export const Hero = () => {
+  const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/30 py-20 lg:py-32">
       {/* Background decoration */}
@@ -12,9 +16,17 @@ export const Hero = () => {
       </div>
 
       <div className="container">
-        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+        <div 
+          ref={ref}
+          className={cn(
+            "flex flex-col items-center text-center max-w-4xl mx-auto transition-all duration-700",
+            isVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-medium mb-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-medium mb-8">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
