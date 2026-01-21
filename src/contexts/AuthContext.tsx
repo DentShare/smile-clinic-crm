@@ -78,32 +78,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // IMPORTANT: subscribe FIRST, then read the existing session.
+    // Also: keep the auth callback synchronous to avoid deadlocks.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        fetchUserData(session.user.id);
+        // Defer any Supabase reads to the next tick.
+        setTimeout(() => {
+          fetchUserData(session.user.id);
+        }, 0);
+      } else {
+        setProfile(null);
+        setClinic(null);
+        setRoles([]);
       }
-      setIsLoading(false);
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    // Get initial session
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await fetchUserData(session.user.id);
-        } else {
-          setProfile(null);
-          setClinic(null);
-          setRoles([]);
+          fetchUserData(session.user.id);
         }
-        setIsLoading(false);
-      }
-    );
+      })
+      .finally(() => setIsLoading(false));
 
     return () => subscription.unsubscribe();
   }, []);
