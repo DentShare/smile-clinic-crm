@@ -394,15 +394,42 @@ const AppointmentBlock = ({ appointment, top, height, isHovered, onHover }: Appo
 
           {/* Quick Actions */}
           <div className="flex gap-1 pt-2 border-t">
-            <Button size="sm" variant="ghost" className="flex-1 h-7 text-xs gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="flex-1 h-7 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Check-in:', appointment.id);
+                // TODO: Implement check-in functionality
+              }}
+            >
               <UserCheck className="h-3 w-3" />
               Check-in
             </Button>
-            <Button size="sm" variant="ghost" className="flex-1 h-7 text-xs gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="flex-1 h-7 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Reschedule:', appointment.id);
+                // TODO: Implement reschedule functionality
+              }}
+            >
               <CalendarClock className="h-3 w-3" />
               Перенести
             </Button>
-            <Button size="sm" variant="ghost" className="flex-1 h-7 text-xs gap-1">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="flex-1 h-7 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Payment:', appointment.id);
+                // TODO: Implement payment functionality
+              }}
+            >
               <DollarSign className="h-3 w-3" />
               Оплата
             </Button>

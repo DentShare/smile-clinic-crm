@@ -273,19 +273,51 @@ const PatientDetail = () => {
               <CardTitle className="text-base">Действия</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2">
-              <Button className="w-full justify-start gap-2" size="sm">
+              <Button 
+                className="w-full justify-start gap-2" 
+                size="sm"
+                onClick={() => {
+                  // Navigate to appointments with patient pre-selected
+                  console.log('Create visit for patient:', patient.id);
+                  toast.info('Функция создания визита будет добавлена');
+                }}
+              >
                 <Plus className="h-4 w-4" />
                 Создать визит
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2" 
+                size="sm"
+                onClick={() => {
+                  console.log('Print invoice for patient:', patient.id);
+                  toast.info('Функция печати счёта будет добавлена');
+                }}
+              >
                 <Printer className="h-4 w-4" />
                 Печать счёта
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2" 
+                size="sm"
+                onClick={() => {
+                  console.log('Send SMS to patient:', patient.phone);
+                  toast.info('Функция SMS напоминания будет добавлена');
+                }}
+              >
                 <Send className="h-4 w-4" />
                 SMS напоминание
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start gap-2" 
+                size="sm"
+                onClick={() => {
+                  console.log('Accept payment from patient:', patient.id);
+                  toast.info('Функция приёма оплаты будет добавлена');
+                }}
+              >
                 <CreditCard className="h-4 w-4" />
                 Принять оплату
               </Button>
