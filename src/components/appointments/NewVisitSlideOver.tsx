@@ -40,6 +40,8 @@ interface NewVisitSlideOverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedDate?: Date;
+  selectedTime?: string;
+  selectedDoctorId?: string;
   onSuccess?: () => void;
 }
 
@@ -56,10 +58,11 @@ const serviceDurations: Record<string, number> = {
 
 const favoriteServices = ['Консультация', 'Чистка', 'Лечение кариеса'];
 
-const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, onSuccess }: NewVisitSlideOverProps) => {
+const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, selectedDoctorId, onSuccess }: NewVisitSlideOverProps) => {
   const { clinic, profile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
 
   // Form state
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -71,9 +74,13 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, onSuccess }: NewV
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedService, setSelectedService] = useState<string>('');
   const [date, setDate] = useState<Date>(selectedDate || new Date());
-  const [time, setTime] = useState('10:00');
+  const [time, setTime] = useState(selectedTime || '10:00');
   const [duration, setDuration] = useState(30);
   const [notes, setNotes] = useState('');
+
+  // New patient form
+  const [newPatientName, setNewPatientName] = useState('');
+  const [newPatientPhone, setNewPatientPhone] = useState('');
 
   const [patientPopoverOpen, setPatientPopoverOpen] = useState(false);
 
@@ -87,7 +94,13 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, onSuccess }: NewV
     if (selectedDate) {
       setDate(selectedDate);
     }
-  }, [selectedDate]);
+    if (selectedTime) {
+      setTime(selectedTime);
+    }
+    if (selectedDoctorId) {
+      setSelectedDoctor(selectedDoctorId);
+    }
+  }, [selectedDate, selectedTime, selectedDoctorId]);
 
   const fetchData = async () => {
     if (!clinic) return;
@@ -168,6 +181,40 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, onSuccess }: NewV
     setDuration(30);
     setNotes('');
     setPatientSearch('');
+    setIsCreatingPatient(false);
+    setNewPatientName('');
+    setNewPatientPhone('');
+  };
+
+  const handleCreatePatient = async () => {
+    if (!clinic || !newPatientName.trim() || !newPatientPhone.trim()) {
+      toast.error('Введите имя и телефон пациента');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          clinic_id: clinic.id,
+          full_name: newPatientName.trim(),
+          phone: newPatientPhone.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPatients(prev => [...prev, data as Patient]);
+      setSelectedPatient(data as Patient);
+      setIsCreatingPatient(false);
+      setNewPatientName('');
+      setNewPatientPhone('');
+      toast.success('Пациент создан');
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      toast.error('Ошибка создания пациента');
+    }
   };
 
   // Time slots
@@ -196,68 +243,126 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, onSuccess }: NewV
               </div>
             ) : (
               <>
-                {/* Patient Search */}
+                {/* Patient Search or Create */}
                 <div className="space-y-2">
-                  <Label>Пациент *</Label>
-                  <Popover open={patientPopoverOpen} onOpenChange={setPatientPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className={cn(
-                          "w-full justify-between",
-                          !selectedPatient && "text-muted-foreground"
-                        )}
-                      >
-                        {selectedPatient ? (
-                          <div className="flex items-center gap-2 truncate">
-                            <User className="h-4 w-4 shrink-0" />
-                            <span className="truncate">{selectedPatient.full_name}</span>
-                          </div>
-                        ) : (
-                          "Поиск по имени или телефону..."
-                        )}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[350px] p-0" align="start">
-                      <Command>
-                        <CommandInput 
-                          placeholder="Введите имя или телефон..." 
-                          value={patientSearch}
-                          onValueChange={setPatientSearch}
+                  <div className="flex items-center justify-between">
+                    <Label>Пациент *</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        setIsCreatingPatient(!isCreatingPatient);
+                        setSelectedPatient(null);
+                      }}
+                    >
+                      {isCreatingPatient ? 'Выбрать из базы' : '+ Новый пациент'}
+                    </Button>
+                  </div>
+
+                  {isCreatingPatient ? (
+                    <div className="space-y-3 p-3 bg-muted/50 rounded-lg border">
+                      <div className="space-y-2">
+                        <Label className="text-xs">ФИО</Label>
+                        <Input
+                          placeholder="Иванов Иван Иванович"
+                          value={newPatientName}
+                          onChange={(e) => setNewPatientName(e.target.value)}
                         />
-                        <CommandList>
-                          <CommandEmpty>Пациент не найден</CommandEmpty>
-                          <CommandGroup>
-                            {filteredPatients.map((patient) => (
-                              <CommandItem
-                                key={patient.id}
-                                value={patient.full_name}
-                                onSelect={() => {
-                                  setSelectedPatient(patient);
-                                  setPatientPopoverOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{patient.full_name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatPhone(patient.phone)}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Телефон</Label>
+                        <Input
+                          placeholder="+998 90 123 45 67"
+                          value={newPatientPhone}
+                          onChange={(e) => setNewPatientPhone(e.target.value)}
+                        />
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="w-full"
+                        onClick={handleCreatePatient}
+                        disabled={!newPatientName.trim() || !newPatientPhone.trim()}
+                      >
+                        Создать пациента
+                      </Button>
+                    </div>
+                  ) : (
+                    <Popover open={patientPopoverOpen} onOpenChange={setPatientPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between",
+                            !selectedPatient && "text-muted-foreground"
+                          )}
+                        >
+                          {selectedPatient ? (
+                            <div className="flex items-center gap-2 truncate">
+                              <User className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{selectedPatient.full_name}</span>
+                            </div>
+                          ) : (
+                            "Поиск по имени или телефону..."
+                          )}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[350px] p-0" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Введите имя или телефон..." 
+                            value={patientSearch}
+                            onValueChange={setPatientSearch}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              <div className="py-2 text-center">
+                                <p className="text-sm text-muted-foreground mb-2">Пациент не найден</p>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setIsCreatingPatient(true);
+                                    setNewPatientName(patientSearch);
+                                    setPatientPopoverOpen(false);
+                                  }}
+                                >
+                                  Создать нового пациента
+                                </Button>
+                              </div>
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {filteredPatients.map((patient) => (
+                                <CommandItem
+                                  key={patient.id}
+                                  value={patient.full_name}
+                                  onSelect={() => {
+                                    setSelectedPatient(patient);
+                                    setPatientPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{patient.full_name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatPhone(patient.phone)}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
 
                 {/* Service Selection */}
