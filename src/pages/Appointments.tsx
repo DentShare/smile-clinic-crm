@@ -27,6 +27,8 @@ import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
+import { CurrentTimeIndicator } from '@/components/schedule/CurrentTimeIndicator';
+import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   scheduled: { label: 'Запланирован', color: 'bg-info/10 text-info border-info/20', icon: CalendarClock },
@@ -113,6 +115,13 @@ const Appointments = () => {
     fetchAppointments();
     fetchDoctors();
   }, [clinic?.id, selectedDate]);
+
+  // Enable appointment notifications
+  useAppointmentNotifications({
+    appointments,
+    enabled: isToday(selectedDate),
+    notifyMinutesBefore: 15,
+  });
 
   const navigateDate = (days: number) => {
     const newDate = new Date(selectedDate);
@@ -255,6 +264,15 @@ const Appointments = () => {
                             <div key={time} className="h-[60px] border-b border-dashed" />
                           ))}
                           
+                          {/* Current time indicator */}
+                          {isToday(selectedDate) && (
+                            <CurrentTimeIndicator 
+                              workStartHour={WORK_START} 
+                              workEndHour={WORK_END} 
+                              slotHeight={SLOT_HEIGHT} 
+                            />
+                          )}
+                          
                           {/* Appointments */}
                           {appointmentsByDoctor[doctor.id]?.map((appointment) => (
                             <AppointmentBlock
@@ -274,6 +292,15 @@ const Appointments = () => {
                         {timeSlots.map((time) => (
                           <div key={time} className="h-[60px] border-b border-dashed" />
                         ))}
+                        
+                        {/* Current time indicator */}
+                        {isToday(selectedDate) && (
+                          <CurrentTimeIndicator 
+                            workStartHour={WORK_START} 
+                            workEndHour={WORK_END} 
+                            slotHeight={SLOT_HEIGHT} 
+                          />
+                        )}
                         
                         {/* All appointments */}
                         {appointments.map((appointment) => (
