@@ -1023,6 +1023,42 @@ export type Database = {
           },
         ]
       }
+      tooth_status_history: {
+        Row: {
+          changed_by: string | null
+          clinic_id: string
+          created_at: string
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+          patient_id: string
+          tooth_number: number
+        }
+        Insert: {
+          changed_by?: string | null
+          clinic_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+          patient_id: string
+          tooth_number: number
+        }
+        Update: {
+          changed_by?: string | null
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+          patient_id?: string
+          tooth_number?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

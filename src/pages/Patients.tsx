@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import { Plus, Search, Loader2 } from 'lucide-react';
 import type { Patient } from '@/types/database';
 
 const Patients = () => {
+  const navigate = useNavigate();
   const { clinic } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -203,7 +205,11 @@ const Patients = () => {
             </TableHeader>
             <TableBody>
               {filteredPatients.map((patient) => (
-                <TableRow key={patient.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow 
+                  key={patient.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/patients/${patient.id}`)}
+                >
                   <TableCell className="font-medium">{patient.full_name}</TableCell>
                   <TableCell>{patient.phone}</TableCell>
                   <TableCell>
