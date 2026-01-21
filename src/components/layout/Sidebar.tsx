@@ -12,7 +12,8 @@ import {
   BarChart3,
   Settings,
   Building2,
-  LogOut
+  LogOut,
+  Smile
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,6 +30,7 @@ const clinicNavItems: NavItem[] = [
   { title: 'Дашборд', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Пациенты', href: '/patients', icon: Users },
   { title: 'Расписание', href: '/appointments', icon: Calendar },
+  { title: 'Зубная формула', href: '/tooth-chart', icon: Smile },
   { title: 'Услуги', href: '/services', icon: Stethoscope },
   { title: 'Склад', href: '/inventory', icon: Package },
   { title: 'Финансы', href: '/payments', icon: CreditCard },
