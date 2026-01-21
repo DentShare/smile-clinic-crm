@@ -1,6 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Star } from 'lucide-react';
+import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { cn } from '@/lib/utils';
 
 const testimonials = [
   {
@@ -30,11 +32,22 @@ const testimonials = [
 ];
 
 export const Testimonials = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation({ threshold: 0.1 });
+
   return (
     <section className="py-20 lg:py-32 bg-muted/30">
       <div className="container">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-16 transition-all duration-700",
+            headerVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Нам доверяют клиники по всей стране
           </h2>
@@ -44,9 +57,23 @@ export const Testimonials = () => {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial) => (
-            <Card key={testimonial.name} className="border-border/50">
+        <div 
+          ref={gridRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
+          {testimonials.map((testimonial, index) => (
+            <Card 
+              key={testimonial.name} 
+              className={cn(
+                "border-border/50 transition-all duration-500",
+                gridVisible 
+                  ? "opacity-100 translate-y-0" 
+                  : "opacity-0 translate-y-8"
+              )}
+              style={{ 
+                transitionDelay: gridVisible ? `${index * 150}ms` : '0ms' 
+              }}
+            >
               <CardContent className="p-6">
                 {/* Rating */}
                 <div className="flex gap-1 mb-4">

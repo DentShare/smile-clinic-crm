@@ -1,5 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { cn } from '@/lib/utils';
 
 const screenshots = [
   {
@@ -71,11 +73,22 @@ const screenshots = [
 ];
 
 export const Screenshots = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: tabsRef, isVisible: tabsVisible } = useScrollAnimation({ threshold: 0.1 });
+
   return (
     <section className="py-20 lg:py-32" id="demo">
       <div className="container">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-12 transition-all duration-700",
+            headerVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Посмотрите как это работает
           </h2>
@@ -85,27 +98,37 @@ export const Screenshots = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="dashboard" className="max-w-5xl mx-auto">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+        <div
+          ref={tabsRef}
+          className={cn(
+            "transition-all duration-700 delay-200",
+            tabsVisible 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-8"
+          )}
+        >
+          <Tabs defaultValue="dashboard" className="max-w-5xl mx-auto">
+            <TabsList className="grid w-full grid-cols-4 mb-8">
+              {screenshots.map((item) => (
+                <TabsTrigger key={item.id} value={item.id} className="text-sm">
+                  {item.title}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
             {screenshots.map((item) => (
-              <TabsTrigger key={item.id} value={item.id} className="text-sm">
-                {item.title}
-              </TabsTrigger>
+              <TabsContent key={item.id} value={item.id}>
+                <Card className="overflow-hidden border-border/50">
+                  {item.placeholder}
+                  <div className="p-6 bg-card">
+                    <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
+                    <p className="text-muted-foreground">{item.description}</p>
+                  </div>
+                </Card>
+              </TabsContent>
             ))}
-          </TabsList>
-          
-          {screenshots.map((item) => (
-            <TabsContent key={item.id} value={item.id}>
-              <Card className="overflow-hidden border-border/50">
-                {item.placeholder}
-                <div className="p-6 bg-card">
-                  <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
-                  <p className="text-muted-foreground">{item.description}</p>
-                </div>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
     </section>
   );
