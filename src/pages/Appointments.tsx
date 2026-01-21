@@ -25,6 +25,8 @@ const Appointments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
+  const [newVisitTime, setNewVisitTime] = useState<string | undefined>();
+  const [newVisitDoctorId, setNewVisitDoctorId] = useState<string | undefined>();
 
   const fetchAppointments = async () => {
     if (!clinic?.id) return;
@@ -84,6 +86,13 @@ const Appointments = () => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
     setSelectedDate(newDate);
+  };
+
+  const handleCreateAppointment = (hour: number, minutes: number, doctorId?: string) => {
+    const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    setNewVisitTime(timeString);
+    setNewVisitDoctorId(doctorId);
+    setIsNewVisitOpen(true);
   };
 
   return (
@@ -151,6 +160,7 @@ const Appointments = () => {
                 workEnd={WORK_END}
                 slotHeight={SLOT_HEIGHT}
                 onAppointmentUpdated={fetchAppointments}
+                onCreateAppointment={handleCreateAppointment}
               />
             )}
           </CardContent>
@@ -159,11 +169,21 @@ const Appointments = () => {
         {/* New Visit Slide-over */}
         <NewVisitSlideOver 
           open={isNewVisitOpen} 
-          onOpenChange={setIsNewVisitOpen}
+          onOpenChange={(open) => {
+            setIsNewVisitOpen(open);
+            if (!open) {
+              setNewVisitTime(undefined);
+              setNewVisitDoctorId(undefined);
+            }
+          }}
           selectedDate={selectedDate}
+          selectedTime={newVisitTime}
+          selectedDoctorId={newVisitDoctorId}
           onSuccess={() => {
             fetchAppointments();
             setIsNewVisitOpen(false);
+            setNewVisitTime(undefined);
+            setNewVisitDoctorId(undefined);
           }}
         />
       </div>

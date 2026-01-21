@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CurrentTimeIndicator } from '@/components/schedule/CurrentTimeIndicator';
 import { DraggableAppointment } from '@/components/schedule/DraggableAppointment';
 import { DroppableTimeSlot } from '@/components/schedule/DroppableTimeSlot';
+import { TimeSlotHoverPreview } from '@/components/schedule/TimeSlotHoverPreview';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isToday, setHours, setMinutes } from 'date-fns';
@@ -18,6 +19,7 @@ interface ScheduleGridProps {
   workEnd: number;
   slotHeight: number;
   onAppointmentUpdated: () => void;
+  onCreateAppointment?: (hour: number, minutes: number, doctorId?: string) => void;
 }
 
 export function ScheduleGrid({
@@ -28,6 +30,7 @@ export function ScheduleGrid({
   workEnd,
   slotHeight,
   onAppointmentUpdated,
+  onCreateAppointment,
 }: ScheduleGridProps) {
   const [hoveredAppointment, setHoveredAppointment] = useState<string | null>(null);
   const [activeAppointment, setActiveAppointment] = useState<(Appointment & { patient: Patient; doctor?: Profile }) | null>(null);
@@ -145,8 +148,24 @@ export function ScheduleGrid({
     }
   }, [appointments, selectedDate, onAppointmentUpdated]);
 
+  const handleTimeSlotClick = useCallback((hour: number, minutes: number, doctorId?: string) => {
+    if (onCreateAppointment) {
+      onCreateAppointment(hour, minutes, doctorId === 'unassigned' ? undefined : doctorId);
+    }
+  }, [onCreateAppointment]);
+
   const renderDoctorColumn = (doctorId: string, doctorAppts: typeof appointments) => (
     <div key={doctorId} className="flex-1 min-w-[200px] border-r relative">
+      {/* Hover Preview Layer */}
+      {onCreateAppointment && (
+        <TimeSlotHoverPreview
+          slotHeight={slotHeight}
+          workStart={workStart}
+          onTimeClick={(hour, minutes) => handleTimeSlotClick(hour, minutes, doctorId)}
+          doctorId={doctorId}
+        />
+      )}
+
       {/* Droppable time slots */}
       {timeSlots.map(({ hour, label }) => (
         <DroppableTimeSlot
