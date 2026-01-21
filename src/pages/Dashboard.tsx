@@ -55,7 +55,7 @@ const Dashboard = () => {
       .select(`
         *,
         patient:patients(*),
-        doctor:profiles(*)
+        doctor:profiles!appointments_doctor_id_fkey(*)
       `)
       .eq('clinic_id', clinic.id)
       .gte('start_time', startDate.toISOString())
