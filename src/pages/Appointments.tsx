@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Calendar, Plus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Calendar, Plus, ChevronLeft, ChevronRight, Loader2, CalendarDays, CalendarRange } from 'lucide-react';
 import type { Appointment, Patient, Profile } from '@/types/database';
-import { format, isToday } from 'date-fns';
+import { format, isToday, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid';
+import { WeeklyScheduleGrid } from '@/components/schedule/WeeklyScheduleGrid';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
 
 // Working hours
@@ -18,34 +20,46 @@ const WORK_START = 9;
 const WORK_END = 20;
 const SLOT_HEIGHT = 60;
 
+type ViewMode = 'day' | 'week';
+
 const Appointments = () => {
   const { clinic } = useAuth();
   const [appointments, setAppointments] = useState<(Appointment & { patient: Patient; doctor: Profile })[]>([]);
   const [doctors, setDoctors] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
   const [newVisitTime, setNewVisitTime] = useState<string | undefined>();
+  const [newVisitDate, setNewVisitDate] = useState<Date | undefined>();
   const [newVisitDoctorId, setNewVisitDoctorId] = useState<string | undefined>();
 
   const fetchAppointments = async () => {
     if (!clinic?.id) return;
 
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    let startDate: Date;
+    let endDate: Date;
+
+    if (viewMode === 'week') {
+      startDate = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      endDate = endOfWeek(selectedDate, { weekStartsOn: 1 });
+    } else {
+      startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     const { data, error } = await supabase
       .from('appointments')
       .select(`
         *,
         patient:patients(*),
-        doctor:profiles(*)
+        doctor:profiles!appointments_doctor_id_fkey(*)
       `)
       .eq('clinic_id', clinic.id)
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
+      .gte('start_time', startDate.toISOString())
+      .lte('start_time', endDate.toISOString())
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -73,7 +87,7 @@ const Appointments = () => {
   useEffect(() => {
     fetchAppointments();
     fetchDoctors();
-  }, [clinic?.id, selectedDate]);
+  }, [clinic?.id, selectedDate, viewMode]);
 
   // Enable appointment notifications
   useAppointmentNotifications({
@@ -82,17 +96,40 @@ const Appointments = () => {
     notifyMinutesBefore: 15,
   });
 
-  const navigateDate = (days: number) => {
+  const navigateDate = (direction: number) => {
     const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate);
+    if (viewMode === 'week') {
+      const navigated = direction > 0 ? addWeeks(newDate, 1) : subWeeks(newDate, 1);
+      setSelectedDate(navigated);
+    } else {
+      newDate.setDate(newDate.getDate() + direction);
+      setSelectedDate(newDate);
+    }
   };
 
-  const handleCreateAppointment = (hour: number, minutes: number, doctorId?: string) => {
+  const handleCreateAppointment = (hour: number, minutes: number, doctorIdOrDate?: string | Date) => {
     const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     setNewVisitTime(timeString);
-    setNewVisitDoctorId(doctorId);
+    
+    if (doctorIdOrDate instanceof Date) {
+      // From weekly view
+      setNewVisitDate(doctorIdOrDate);
+      setNewVisitDoctorId(undefined);
+    } else {
+      // From daily view
+      setNewVisitDate(selectedDate);
+      setNewVisitDoctorId(doctorIdOrDate);
+    }
     setIsNewVisitOpen(true);
+  };
+
+  const getDateLabel = () => {
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+      return `${format(weekStart, 'd MMM', { locale: ru })} — ${format(weekEnd, 'd MMM yyyy', { locale: ru })}`;
+    }
+    return format(selectedDate, 'EEEE, d MMMM', { locale: ru });
   };
 
   return (
@@ -103,7 +140,7 @@ const Appointments = () => {
           <div>
             <h1 className="text-xl font-semibold">Расписание</h1>
             <p className="text-sm text-muted-foreground">
-              Перетаскивайте записи для изменения времени
+              {viewMode === 'day' ? 'Перетаскивайте записи для изменения времени' : 'Недельный вид расписания'}
             </p>
           </div>
 
@@ -113,7 +150,7 @@ const Appointments = () => {
           </Button>
         </div>
 
-        {/* Date Navigation */}
+        {/* Date Navigation & View Toggle */}
         <div className="flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
@@ -125,15 +162,31 @@ const Appointments = () => {
             <div className="flex items-center gap-2 px-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">
-                {format(selectedDate, 'EEEE, d MMMM', { locale: ru })}
+                {getDateLabel()}
               </span>
-              {isToday(selectedDate) && (
+              {viewMode === 'day' && isToday(selectedDate) && (
                 <Badge variant="secondary" className="text-xs">Сегодня</Badge>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <ToggleGroup 
+              type="single" 
+              value={viewMode} 
+              onValueChange={(v) => v && setViewMode(v as ViewMode)}
+              className="bg-muted p-0.5 rounded-md"
+            >
+              <ToggleGroupItem value="day" aria-label="День" className="gap-1.5 px-3 data-[state=on]:bg-background">
+                <CalendarDays className="h-4 w-4" />
+                <span className="hidden sm:inline">День</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="week" aria-label="Неделя" className="gap-1.5 px-3 data-[state=on]:bg-background">
+                <CalendarRange className="h-4 w-4" />
+                <span className="hidden sm:inline">Неделя</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+
             <Button 
               variant={isToday(selectedDate) ? "secondary" : "outline"} 
               size="sm"
@@ -151,7 +204,7 @@ const Appointments = () => {
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : (
+            ) : viewMode === 'day' ? (
               <ScheduleGrid
                 appointments={appointments}
                 doctors={doctors}
@@ -160,7 +213,16 @@ const Appointments = () => {
                 workEnd={WORK_END}
                 slotHeight={SLOT_HEIGHT}
                 onAppointmentUpdated={fetchAppointments}
-                onCreateAppointment={handleCreateAppointment}
+                onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
+              />
+            ) : (
+              <WeeklyScheduleGrid
+                appointments={appointments}
+                selectedDate={selectedDate}
+                workStart={WORK_START}
+                workEnd={WORK_END}
+                slotHeight={SLOT_HEIGHT}
+                onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
               />
             )}
           </CardContent>
@@ -173,16 +235,18 @@ const Appointments = () => {
             setIsNewVisitOpen(open);
             if (!open) {
               setNewVisitTime(undefined);
+              setNewVisitDate(undefined);
               setNewVisitDoctorId(undefined);
             }
           }}
-          selectedDate={selectedDate}
+          selectedDate={newVisitDate || selectedDate}
           selectedTime={newVisitTime}
           selectedDoctorId={newVisitDoctorId}
           onSuccess={() => {
             fetchAppointments();
             setIsNewVisitOpen(false);
             setNewVisitTime(undefined);
+            setNewVisitDate(undefined);
             setNewVisitDoctorId(undefined);
           }}
         />
