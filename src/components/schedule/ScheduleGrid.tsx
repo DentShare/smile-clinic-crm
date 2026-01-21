@@ -247,10 +247,17 @@ export function ScheduleGrid({
               {timeSlots.map(({ hour, label }) => (
                 <div 
                   key={hour} 
-                  className="border-b text-xs text-muted-foreground flex items-start justify-end pr-2 pt-1"
+                  className="border-b text-xs text-muted-foreground flex flex-col relative"
                   style={{ height: `${slotHeight}px` }}
                 >
-                  {label}
+                  <span className="absolute top-0 right-2">{label}</span>
+                  {/* Half-hour label */}
+                  <span 
+                    className="absolute right-2 text-muted-foreground/50"
+                    style={{ top: `${slotHeight / 2 - 6}px` }}
+                  >
+                    {hour.toString().padStart(2, '0')}:30
+                  </span>
                 </div>
               ))}
             </div>
