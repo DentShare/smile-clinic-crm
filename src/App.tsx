@@ -22,6 +22,7 @@ import Documents from "./pages/Documents";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ToothChartDemo from "./pages/ToothChartDemo";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,12 @@ const App = () => (
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/tooth-chart" element={<ToothChartDemo />} />
+              
+              {/* Super Admin Routes */}
+              <Route path="/admin" element={<SuperAdminDashboard />} />
+              <Route path="/admin/clinics" element={<SuperAdminDashboard />} />
+              <Route path="/admin/subscriptions" element={<SuperAdminDashboard />} />
+              <Route path="/admin/analytics" element={<SuperAdminDashboard />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

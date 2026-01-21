@@ -40,6 +40,7 @@ const clinicNavItems: NavItem[] = [
 ];
 
 const superAdminNavItems: NavItem[] = [
+  { title: 'Панель управления', href: '/admin', icon: LayoutDashboard },
   { title: 'Клиники', href: '/admin/clinics', icon: Building2 },
   { title: 'Подписки', href: '/admin/subscriptions', icon: CreditCard },
   { title: 'Аналитика', href: '/admin/analytics', icon: BarChart3 },
