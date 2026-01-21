@@ -327,6 +327,10 @@ const Dashboard = () => {
                     setNewVisitTime(timeString);
                     setIsNewVisitOpen(true);
                   }}
+                  onAppointmentUpdated={() => {
+                    fetchAppointments();
+                    fetchStats();
+                  }}
                 />
               )}
             </CardContent>

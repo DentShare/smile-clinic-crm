@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Loader2 } from 'lucide-react';
+import { Building2, Users, CreditCard, Loader2, Clock } from 'lucide-react';
+import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -61,6 +62,10 @@ const Settings = () => {
           <TabsTrigger value="clinic">
             <Building2 className="mr-2 h-4 w-4" />
             Клиника
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <Clock className="mr-2 h-4 w-4" />
+            График работы
           </TabsTrigger>
           <TabsTrigger value="team">
             <Users className="mr-2 h-4 w-4" />
@@ -120,6 +125,10 @@ const Settings = () => {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="schedule" className="mt-6">
+          <WorkScheduleSettings />
         </TabsContent>
 
         <TabsContent value="team" className="mt-6">
