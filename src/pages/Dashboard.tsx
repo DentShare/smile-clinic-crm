@@ -32,6 +32,8 @@ import { formatPhone } from '@/lib/formatters';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { toast } from 'sonner';
+import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
+import { useCurrentTime } from '@/hooks/use-current-time';
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
   scheduled: { label: 'Запланирован', color: 'text-info', bgColor: 'bg-info/10 border-info/20' },
@@ -148,10 +150,14 @@ const Dashboard = () => {
     }
   };
 
-  const currentTime = useMemo(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }, []);
+  const currentTime = useCurrentTime(60000);
+  
+  // Enable appointment notifications
+  useAppointmentNotifications({
+    appointments,
+    enabled: isToday(selectedDate),
+    notifyMinutesBefore: 15,
+  });
 
   const sortedAppointments = useMemo(() => {
     return [...appointments].sort((a, b) => {
