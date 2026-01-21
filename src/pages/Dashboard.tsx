@@ -1,48 +1,34 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
+import { DashboardTimeGrid } from '@/components/schedule/DashboardTimeGrid';
 import { 
   Users, 
   Calendar as CalendarIcon, 
   CreditCard, 
   TrendingUp,
   Plus,
-  Clock,
   User,
   ChevronRight,
-  CheckCircle2,
   AlertCircle,
   Loader2,
-  DollarSign,
-  UserCheck,
-  Phone
+  DollarSign
 } from 'lucide-react';
 import { format, isToday, startOfDay, endOfDay, addDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { formatPhone } from '@/lib/formatters';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { toast } from 'sonner';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
-import { useCurrentTime } from '@/hooks/use-current-time';
 
-const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  scheduled: { label: 'Запланирован', color: 'text-info', bgColor: 'bg-info/10 border-info/20' },
-  confirmed: { label: 'Подтверждён', color: 'text-success', bgColor: 'bg-success/10 border-success/20' },
-  in_progress: { label: 'В процессе', color: 'text-warning', bgColor: 'bg-warning/10 border-warning/20' },
-  completed: { label: 'Завершён', color: 'text-muted-foreground', bgColor: 'bg-muted border-muted' },
-  cancelled: { label: 'Отменён', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/20' },
-  no_show: { label: 'Не пришёл', color: 'text-destructive', bgColor: 'bg-destructive/10 border-destructive/20' },
-};
 
 const Dashboard = () => {
   const { clinic, profile, isSuperAdmin } = useAuth();
@@ -50,6 +36,7 @@ const Dashboard = () => {
   const [appointments, setAppointments] = useState<(Appointment & { patient: Patient; doctor?: Profile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
+  const [newVisitTime, setNewVisitTime] = useState<string | undefined>();
   const [stats, setStats] = useState({
     totalPatients: 0,
     todayAppointments: 0,
@@ -136,56 +123,13 @@ const Dashboard = () => {
     fetchStats();
   }, [clinic?.id, selectedDate]);
 
-  const handleCheckIn = async (appointmentId: string) => {
-    const { error } = await supabase
-      .from('appointments')
-      .update({ status: 'in_progress' })
-      .eq('id', appointmentId);
 
-    if (error) {
-      toast.error('Ошибка при обновлении статуса');
-    } else {
-      toast.success('Пациент пришёл');
-      fetchAppointments();
-    }
-  };
-
-  const currentTime = useCurrentTime(60000);
-  
   // Enable appointment notifications
   useAppointmentNotifications({
     appointments,
     enabled: isToday(selectedDate),
     notifyMinutesBefore: 15,
   });
-
-  const sortedAppointments = useMemo(() => {
-    return [...appointments].sort((a, b) => {
-      const timeA = new Date(a.start_time).getTime();
-      const timeB = new Date(b.start_time).getTime();
-      return timeA - timeB;
-    });
-  }, [appointments]);
-
-  const upcomingAppointments = useMemo(() => {
-    if (!isToday(selectedDate)) return sortedAppointments;
-    
-    const now = new Date();
-    return sortedAppointments.filter(a => {
-      const startTime = new Date(a.start_time);
-      return startTime >= now || a.status === 'in_progress';
-    });
-  }, [sortedAppointments, selectedDate]);
-
-  const pastAppointments = useMemo(() => {
-    if (!isToday(selectedDate)) return [];
-    
-    const now = new Date();
-    return sortedAppointments.filter(a => {
-      const startTime = new Date(a.start_time);
-      return startTime < now && a.status !== 'in_progress';
-    });
-  }, [sortedAppointments, selectedDate]);
 
   if (isSuperAdmin) {
     return (
@@ -371,51 +315,19 @@ const Dashboard = () => {
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : appointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                  <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                  <p className="text-muted-foreground">Нет записей на этот день</p>
-                  <Button 
-                    variant="link" 
-                    onClick={() => setIsNewVisitOpen(true)}
-                    className="mt-2"
-                  >
-                    Создать запись
-                  </Button>
-                </div>
               ) : (
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-2">
-                    {/* Current/Upcoming appointments */}
-                    {upcomingAppointments.map((appointment) => (
-                      <AppointmentCard 
-                        key={appointment.id} 
-                        appointment={appointment}
-                        onCheckIn={handleCheckIn}
-                        isNow={appointment.status === 'in_progress'}
-                      />
-                    ))}
-                    
-                    {/* Past appointments (collapsed section) */}
-                    {pastAppointments.length > 0 && isToday(selectedDate) && (
-                      <>
-                        <div className="flex items-center gap-2 py-2">
-                          <Separator className="flex-1" />
-                          <span className="text-xs text-muted-foreground">Прошедшие</span>
-                          <Separator className="flex-1" />
-                        </div>
-                        {pastAppointments.map((appointment) => (
-                          <AppointmentCard 
-                            key={appointment.id} 
-                            appointment={appointment}
-                            onCheckIn={handleCheckIn}
-                            isPast
-                          />
-                        ))}
-                      </>
-                    )}
-                  </div>
-                </ScrollArea>
+                <DashboardTimeGrid
+                  appointments={appointments}
+                  selectedDate={selectedDate}
+                  workStart={9}
+                  workEnd={20}
+                  slotHeight={48}
+                  onCreateAppointment={(hour, minutes) => {
+                    const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    setNewVisitTime(timeString);
+                    setIsNewVisitOpen(true);
+                  }}
+                />
               )}
             </CardContent>
           </Card>
@@ -507,126 +419,21 @@ const Dashboard = () => {
       {/* New Visit Slide-over */}
       <NewVisitSlideOver 
         open={isNewVisitOpen} 
-        onOpenChange={setIsNewVisitOpen}
+        onOpenChange={(open) => {
+          setIsNewVisitOpen(open);
+          if (!open) {
+            setNewVisitTime(undefined);
+          }
+        }}
         selectedDate={selectedDate}
+        selectedTime={newVisitTime}
         onSuccess={() => {
           fetchAppointments();
           fetchStats();
           setIsNewVisitOpen(false);
+          setNewVisitTime(undefined);
         }}
       />
-    </div>
-  );
-};
-
-// Appointment Card Component
-interface AppointmentCardProps {
-  appointment: Appointment & { patient: Patient; doctor?: Profile };
-  onCheckIn: (id: string) => void;
-  isNow?: boolean;
-  isPast?: boolean;
-}
-
-const AppointmentCard = ({ appointment, onCheckIn, isNow, isPast }: AppointmentCardProps) => {
-  const status = statusConfig[appointment.status] || statusConfig.scheduled;
-  const hasDebt = appointment.patient?.balance < 0;
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  return (
-    <div 
-      className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border transition-all",
-        isNow && "ring-2 ring-primary bg-primary/5 border-primary/30",
-        isPast && "opacity-60",
-        !isNow && !isPast && "hover:bg-accent/50"
-      )}
-    >
-      {/* Time */}
-      <div className="shrink-0 text-center w-14">
-        <p className={cn("text-sm font-semibold", isNow && "text-primary")}>
-          {formatTime(appointment.start_time)}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {formatTime(appointment.end_time)}
-        </p>
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <Link 
-              to={`/patients/${appointment.patient_id}`}
-              className="font-medium text-sm hover:underline truncate block"
-            >
-              {appointment.patient?.full_name}
-            </Link>
-            {appointment.patient?.phone && (
-              <a 
-                href={`tel:${appointment.patient.phone}`}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Phone className="h-3 w-3" />
-                {formatPhone(appointment.patient.phone)}
-              </a>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 shrink-0">
-            {hasDebt && (
-              <Badge variant="destructive" className="text-xs px-1.5">
-                Долг
-              </Badge>
-            )}
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs px-1.5", status.bgColor, status.color)}
-            >
-              {status.label}
-            </Badge>
-          </div>
-        </div>
-
-        {appointment.complaints && (
-          <p className="text-xs text-muted-foreground mt-1 truncate">
-            {appointment.complaints}
-          </p>
-        )}
-
-        {appointment.doctor && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Врач: {appointment.doctor.full_name}
-          </p>
-        )}
-
-        {/* Quick actions for scheduled appointments */}
-        {appointment.status === 'scheduled' && !isPast && (
-          <div className="flex gap-2 mt-2">
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="h-7 text-xs gap-1"
-              onClick={() => onCheckIn(appointment.id)}
-            >
-              <UserCheck className="h-3 w-3" />
-              Пациент пришёл
-            </Button>
-          </div>
-        )}
-
-        {isNow && (
-          <div className="flex items-center gap-1 mt-2 text-primary text-xs font-medium">
-            <Clock className="h-3 w-3 animate-pulse" />
-            Сейчас на приёме
-          </div>
-        )}
-      </div>
     </div>
   );
 };
