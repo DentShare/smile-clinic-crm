@@ -76,6 +76,8 @@ const ToothChart = ({ patientId, readOnly = false }: ToothChartProps) => {
   const handleSaveStatus = async (status: ToothStatus, notes: string) => {
     if (!selectedTooth || !clinic) return;
 
+    const oldStatus = toothStatuses.get(selectedTooth)?.status || null;
+
     try {
       const existingRecord = await supabase
         .from('tooth_status')
@@ -106,6 +108,18 @@ const ToothChart = ({ patientId, readOnly = false }: ToothChartProps) => {
           });
 
         if (error) throw error;
+      }
+
+      // Save to history if status changed
+      if (oldStatus !== status) {
+        await supabase.from('tooth_status_history').insert({
+          clinic_id: clinic.id,
+          patient_id: patientId,
+          tooth_number: selectedTooth,
+          old_status: oldStatus,
+          new_status: status,
+          notes,
+        });
       }
 
       // Update local state
