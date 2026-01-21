@@ -44,7 +44,7 @@ const Index = () => {
             <ul className="space-y-3">
               {features.map((feature) => (
                 <li key={feature} className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-600" />
+                  <Check className="h-5 w-5 text-success" />
                   <span>{feature}</span>
                 </li>
               ))}

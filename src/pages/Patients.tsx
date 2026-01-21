@@ -219,7 +219,7 @@ const Patients = () => {
                   </TableCell>
                   <TableCell>{patient.source || '—'}</TableCell>
                   <TableCell
-                    className={patient.balance < 0 ? 'text-destructive' : 'text-green-600'}
+                    className={patient.balance < 0 ? 'text-destructive' : 'text-success'}
                   >
                     {patient.balance.toLocaleString()} сум
                   </TableCell>
