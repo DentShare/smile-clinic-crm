@@ -65,7 +65,7 @@ export function TimeSlotHoverPreview({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-0"
+      className="absolute inset-0 z-10"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}

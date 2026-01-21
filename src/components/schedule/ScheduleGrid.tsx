@@ -214,15 +214,24 @@ export function ScheduleGrid({
             Время
           </div>
           {doctors.length > 0 ? (
-            doctors.map((doctor) => (
-              <div 
-                key={doctor.id} 
-                className="flex-1 min-w-[200px] p-2 border-r text-center"
-              >
-                <p className="text-sm font-medium truncate">{doctor.full_name}</p>
-                <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
-              </div>
-            ))
+            <>
+              {doctors.map((doctor) => (
+                <div 
+                  key={doctor.id} 
+                  className="flex-1 min-w-[200px] p-2 border-r text-center"
+                >
+                  <p className="text-sm font-medium truncate">{doctor.full_name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
+                </div>
+              ))}
+              {/* Unassigned column header if there are unassigned appointments */}
+              {appointmentsByDoctor['unassigned']?.length > 0 && (
+                <div className="flex-1 min-w-[200px] p-2 border-r text-center">
+                  <p className="text-sm font-medium truncate">Без врача</p>
+                  <p className="text-xs text-muted-foreground truncate">Не назначен</p>
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex-1 p-2 text-center text-sm text-muted-foreground">
               Все записи
@@ -248,7 +257,13 @@ export function ScheduleGrid({
 
             {/* Doctor Columns */}
             {doctors.length > 0 ? (
-              doctors.map((doctor) => renderDoctorColumn(doctor.id, appointmentsByDoctor[doctor.id]))
+              <>
+                {doctors.map((doctor) => renderDoctorColumn(doctor.id, appointmentsByDoctor[doctor.id]))}
+                {/* Also show unassigned appointments column if there are any */}
+                {appointmentsByDoctor['unassigned']?.length > 0 && (
+                  renderDoctorColumn('unassigned', appointmentsByDoctor['unassigned'])
+                )}
+              </>
             ) : (
               renderDoctorColumn('unassigned', appointments)
             )}

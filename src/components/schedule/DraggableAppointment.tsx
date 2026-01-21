@@ -57,7 +57,7 @@ export function DraggableAppointment({
     height: `${Math.max(height, 40)}px`,
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : isHovered ? 10 : 1,
+    zIndex: isDragging ? 50 : isHovered ? 30 : 20,
   };
 
   return (
