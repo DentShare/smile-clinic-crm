@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
 import { DashboardTimeGrid } from '@/components/schedule/DashboardTimeGrid';
+import { useWorkingHours } from '@/hooks/use-working-hours';
 import { 
   Users, 
   Calendar as CalendarIcon, 
@@ -26,7 +27,6 @@ import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
-import { toast } from 'sonner';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
 
 
@@ -43,6 +43,9 @@ const Dashboard = () => {
     todayRevenue: 0,
     pendingPayments: 0,
   });
+
+  // Get working hours from clinic settings
+  const { workStart, workEnd, isWorkingDay } = useWorkingHours(selectedDate);
 
   const fetchAppointments = async () => {
     if (!clinic?.id) return;
@@ -319,14 +322,14 @@ const Dashboard = () => {
                 <DashboardTimeGrid
                   appointments={appointments}
                   selectedDate={selectedDate}
-                  workStart={9}
-                  workEnd={20}
+                  workStart={workStart}
+                  workEnd={workEnd}
                   slotHeight={48}
-                  onCreateAppointment={(hour, minutes) => {
+                  onCreateAppointment={isWorkingDay ? (hour, minutes) => {
                     const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                     setNewVisitTime(timeString);
                     setIsNewVisitOpen(true);
-                  }}
+                  } : undefined}
                   onAppointmentUpdated={() => {
                     fetchAppointments();
                     fetchStats();
