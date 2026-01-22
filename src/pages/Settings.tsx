@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Building2, Users, CreditCard, Loader2, Clock } from 'lucide-react';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
+import { StaffManagement } from '@/components/settings/StaffManagement';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -132,15 +133,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="team" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Команда</CardTitle>
-              <CardDescription>Управление сотрудниками клиники</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Раздел в разработке</p>
-            </CardContent>
-          </Card>
+          <StaffManagement />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6">

@@ -59,7 +59,7 @@ export function WorkScheduleSettings() {
       .from('profiles')
       .select('*')
       .eq('clinic_id', clinic.id)
-      .not('specialization', 'is', null)
+      .eq('is_active', true)
       .order('full_name');
 
     if (data) {
@@ -71,13 +71,17 @@ export function WorkScheduleSettings() {
     if (!clinic?.id) return;
     setIsLoading(true);
 
-    const doctorId = selectedDoctor === 'clinic' ? null : selectedDoctor;
+    // For clinic schedule, use the null UUID
+    // For doctors, use their user_id (not profile id)
+    const doctorUserId = selectedDoctor === 'clinic' 
+      ? '00000000-0000-0000-0000-000000000000' 
+      : selectedDoctor;
 
     const { data, error } = await supabase
       .from('doctor_schedules')
       .select('*')
       .eq('clinic_id', clinic.id)
-      .eq('doctor_id', doctorId || '00000000-0000-0000-0000-000000000000');
+      .eq('doctor_id', doctorUserId);
 
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching schedules:', error);
@@ -125,19 +129,23 @@ export function WorkScheduleSettings() {
     setIsSaving(true);
 
     try {
-      const doctorId = selectedDoctor === 'clinic' ? null : selectedDoctor;
+      // For clinic schedule, use the null UUID
+      // For doctors, use their user_id
+      const doctorUserId = selectedDoctor === 'clinic' 
+        ? '00000000-0000-0000-0000-000000000000' 
+        : selectedDoctor;
 
       // Delete existing schedules
       await supabase
         .from('doctor_schedules')
         .delete()
         .eq('clinic_id', clinic.id)
-        .eq('doctor_id', doctorId || '00000000-0000-0000-0000-000000000000');
+        .eq('doctor_id', doctorUserId);
 
       // Insert new schedules
       const schedulesToInsert = schedules.map(s => ({
         clinic_id: clinic.id,
-        doctor_id: doctorId || '00000000-0000-0000-0000-000000000000',
+        doctor_id: doctorUserId,
         day_of_week: s.day_of_week,
         start_time: s.start_time,
         end_time: s.end_time,
@@ -178,8 +186,8 @@ export function WorkScheduleSettings() {
             <SelectContent>
               <SelectItem value="clinic">Клиника (по умолчанию)</SelectItem>
               {doctors.map(doctor => (
-                <SelectItem key={doctor.id} value={doctor.id}>
-                  {doctor.full_name}
+                <SelectItem key={doctor.user_id} value={doctor.user_id}>
+                  {doctor.full_name} {doctor.specialization && `(${doctor.specialization})`}
                 </SelectItem>
               ))}
             </SelectContent>

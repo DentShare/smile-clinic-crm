@@ -14,13 +14,15 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { UserPlus, Users, Stethoscope, UserCog, HeartHandshake, Loader2, Phone, Clock, Send, Copy, Trash2 } from 'lucide-react';
+import { UserPlus, Users, Stethoscope, UserCog, HeartHandshake, Loader2, Phone, Clock, Send, Copy, Trash2, Mail, Pencil } from 'lucide-react';
+import { StaffProfileEditor } from './StaffProfileEditor';
 import type { Profile } from '@/types/database';
 
 type AppRole = 'clinic_admin' | 'doctor' | 'reception' | 'nurse';
 
 interface StaffMember extends Profile {
   roles: AppRole[];
+  email?: string;
 }
 
 interface StaffLimits {
@@ -55,6 +57,8 @@ export function StaffManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState<StaffMember | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const [newInvite, setNewInvite] = useState({
     email: '',
@@ -95,6 +99,8 @@ export function StaffManagement() {
           .select('role')
           .eq('user_id', p.user_id);
         
+        // Get email from auth.users via a database function would be ideal,
+        // but for now we'll just show the phone as contact
         staffWithRoles.push({
           ...p,
           roles: (roles || []).map(r => r.role as AppRole),
@@ -459,7 +465,7 @@ export function StaffManagement() {
                     <TableHead>Роль</TableHead>
                     <TableHead>Контакты</TableHead>
                     <TableHead>Статус</TableHead>
-                    {canManageStaff && <TableHead className="w-[100px]">Действия</TableHead>}
+                    {canManageStaff && <TableHead className="w-[120px]">Действия</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -494,12 +500,14 @@ export function StaffManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {member.phone && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              {member.phone}
-                            </div>
-                          )}
+                          <div className="space-y-1">
+                            {member.phone && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {member.phone}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={member.is_active ? 'default' : 'secondary'}>
@@ -508,12 +516,24 @@ export function StaffManagement() {
                         </TableCell>
                         {canManageStaff && (
                           <TableCell>
-                            {!isCurrentUser && (
-                              <Switch
-                                checked={member.is_active ?? false}
-                                onCheckedChange={() => handleToggleActive(member)}
-                              />
-                            )}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingProfile(member);
+                                  setIsEditDialogOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              {!isCurrentUser && (
+                                <Switch
+                                  checked={member.is_active ?? false}
+                                  onCheckedChange={() => handleToggleActive(member)}
+                                />
+                              )}
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -600,6 +620,14 @@ export function StaffManagement() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Profile Editor Dialog */}
+      <StaffProfileEditor
+        profile={editingProfile}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSaved={fetchStaff}
+      />
     </div>
   );
 }

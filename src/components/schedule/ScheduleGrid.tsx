@@ -7,8 +7,9 @@ import { DroppableTimeSlot } from '@/components/schedule/DroppableTimeSlot';
 import { TimeSlotHoverPreview } from '@/components/schedule/TimeSlotHoverPreview';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { toast } from 'sonner';
-import { isToday, setHours, setMinutes } from 'date-fns';
+import { isToday, setHours, setMinutes, getDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useDoctorSchedules } from '@/hooks/use-doctor-schedules';
 import type { Appointment, Patient, Profile } from '@/types/database';
 
 interface ScheduleGridProps {
@@ -32,6 +33,8 @@ export function ScheduleGrid({
   onAppointmentUpdated,
   onCreateAppointment,
 }: ScheduleGridProps) {
+  const { getDoctorTimeRange } = useDoctorSchedules();
+  const dayOfWeek = getDay(selectedDate);
   const [hoveredAppointment, setHoveredAppointment] = useState<string | null>(null);
   const [activeAppointment, setActiveAppointment] = useState<(Appointment & { patient: Patient; doctor?: Profile }) | null>(null);
 
@@ -154,51 +157,81 @@ export function ScheduleGrid({
     }
   }, [onCreateAppointment]);
 
-  const renderDoctorColumn = (doctorId: string, doctorAppts: typeof appointments) => (
-    <div key={doctorId} className="flex-1 min-w-[200px] border-r relative">
-      {/* Hover Preview Layer */}
-      {onCreateAppointment && (
-        <TimeSlotHoverPreview
-          slotHeight={slotHeight}
-          workStart={workStart}
-          onTimeClick={(hour, minutes) => handleTimeSlotClick(hour, minutes, doctorId)}
-          doctorId={doctorId}
-        />
-      )}
+  const renderDoctorColumn = (doctorId: string, doctorAppts: typeof appointments, doctorUserId?: string) => {
+    // Get doctor's specific schedule for this day - use user_id for schedule lookup
+    const doctorTime = doctorUserId 
+      ? getDoctorTimeRange(doctorUserId, dayOfWeek)
+      : { start: workStart, end: workEnd, isWorking: true };
 
-      {/* Droppable time slots */}
-      {timeSlots.map(({ hour, label }) => (
-        <DroppableTimeSlot
-          key={`${doctorId}-${hour}`}
-          id={`${doctorId}-${hour}`}
-          hour={hour}
-          doctorId={doctorId}
-          slotHeight={slotHeight}
-        />
-      ))}
-      
-      {/* Current time indicator */}
-      {isToday(selectedDate) && (
-        <CurrentTimeIndicator 
-          workStartHour={workStart} 
-          workEndHour={workEnd} 
-          slotHeight={slotHeight} 
-        />
-      )}
-      
-      {/* Appointments */}
-      {doctorAppts?.map((appointment) => (
-        <DraggableAppointment
-          key={appointment.id}
-          appointment={appointment}
-          top={getAppointmentPosition(appointment.start_time)}
-          height={getAppointmentHeight(appointment.start_time, appointment.end_time)}
-          isHovered={hoveredAppointment === appointment.id}
-          onHover={(hovered) => setHoveredAppointment(hovered ? appointment.id : null)}
-        />
-      ))}
-    </div>
-  );
+    return (
+      <div key={doctorId} className="flex-1 min-w-[200px] border-r relative">
+        {/* Hover Preview Layer - only for working hours */}
+        {onCreateAppointment && doctorTime.isWorking && (
+          <TimeSlotHoverPreview
+            slotHeight={slotHeight}
+            workStart={workStart}
+            onTimeClick={(hour, minutes) => {
+              // Only allow clicks within doctor's working hours
+              if (hour >= doctorTime.start && hour < doctorTime.end) {
+                handleTimeSlotClick(hour, minutes, doctorId);
+              }
+            }}
+            doctorId={doctorId}
+          />
+        )}
+
+        {/* Droppable time slots */}
+        {timeSlots.map(({ hour }) => {
+          const isOutsideWorkHours = hour < doctorTime.start || hour >= doctorTime.end;
+          const isNonWorkingDay = !doctorTime.isWorking;
+          
+          return (
+            <DroppableTimeSlot
+              key={`${doctorId}-${hour}`}
+              id={`${doctorId}-${hour}`}
+              hour={hour}
+              doctorId={doctorId}
+              slotHeight={slotHeight}
+              className={cn(
+                (isOutsideWorkHours || isNonWorkingDay) && 'bg-muted/50 pointer-events-none'
+              )}
+              disabled={isOutsideWorkHours || isNonWorkingDay}
+            />
+          );
+        })}
+        
+        {/* Non-working overlay */}
+        {!doctorTime.isWorking && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/30 z-10">
+            <span className="text-sm text-muted-foreground font-medium px-3 py-1 rounded bg-background/80">
+              Выходной
+            </span>
+          </div>
+        )}
+        
+        {/* Current time indicator */}
+        {isToday(selectedDate) && (
+          <CurrentTimeIndicator 
+            workStartHour={workStart} 
+            workEndHour={workEnd} 
+            slotHeight={slotHeight} 
+          />
+        )}
+        
+        {/* Appointments */}
+        {doctorAppts?.map((appointment) => (
+          <DraggableAppointment
+            key={appointment.id}
+            appointment={appointment}
+            top={getAppointmentPosition(appointment.start_time)}
+            height={getAppointmentHeight(appointment.start_time, appointment.end_time)}
+            isHovered={hoveredAppointment === appointment.id}
+            onHover={(hovered) => setHoveredAppointment(hovered ? appointment.id : null)}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <DndContext
@@ -265,7 +298,7 @@ export function ScheduleGrid({
             {/* Doctor Columns */}
             {doctors.length > 0 ? (
               <>
-                {doctors.map((doctor) => renderDoctorColumn(doctor.id, appointmentsByDoctor[doctor.id]))}
+                {doctors.map((doctor) => renderDoctorColumn(doctor.id, appointmentsByDoctor[doctor.id], doctor.user_id))}
                 {/* Also show unassigned appointments column if there are any */}
                 {appointmentsByDoctor['unassigned']?.length > 0 && (
                   renderDoctorColumn('unassigned', appointmentsByDoctor['unassigned'])

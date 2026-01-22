@@ -6,6 +6,8 @@ interface DroppableTimeSlotProps {
   hour: number;
   doctorId?: string;
   slotHeight: number;
+  className?: string;
+  disabled?: boolean;
   children?: React.ReactNode;
 }
 
@@ -14,11 +16,14 @@ export function DroppableTimeSlot({
   hour,
   doctorId,
   slotHeight,
+  className,
+  disabled,
   children,
 }: DroppableTimeSlotProps) {
   const { isOver, setNodeRef } = useDroppable({
     id,
     data: { hour, doctorId },
+    disabled,
   });
 
   return (
@@ -26,7 +31,8 @@ export function DroppableTimeSlot({
       ref={setNodeRef}
       className={cn(
         "border-b transition-colors relative",
-        isOver && "bg-primary/10"
+        isOver && !disabled && "bg-primary/10",
+        className
       )}
       style={{ height: `${slotHeight}px` }}
     >
