@@ -23,6 +23,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ToothChartDemo from "./pages/ToothChartDemo";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/accept-invitation" element={<AcceptInvitation />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
