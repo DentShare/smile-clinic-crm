@@ -42,6 +42,8 @@ interface NewVisitSlideOverProps {
   selectedDate?: Date;
   selectedTime?: string;
   selectedDoctorId?: string;
+  preSelectedPatientId?: string;
+  preSelectedPatientName?: string;
   onSuccess?: () => void;
 }
 
@@ -58,8 +60,8 @@ const serviceDurations: Record<string, number> = {
 
 const favoriteServices = ['Консультация', 'Чистка', 'Лечение кариеса'];
 
-const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, selectedDoctorId, onSuccess }: NewVisitSlideOverProps) => {
-  const { clinic, profile } = useAuth();
+const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, selectedDoctorId, preSelectedPatientId, preSelectedPatientName, onSuccess }: NewVisitSlideOverProps) => {
+  const { clinic } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
@@ -69,8 +71,10 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
   const [doctors, setDoctors] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   
-  const [patientSearch, setPatientSearch] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [patientSearch, setPatientSearch] = useState(preSelectedPatientName || '');
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
+    preSelectedPatientId ? { id: preSelectedPatientId, full_name: preSelectedPatientName || '' } as Patient : null
+  );
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedService, setSelectedService] = useState<string>('');
   const [date, setDate] = useState<Date>(selectedDate || new Date());
