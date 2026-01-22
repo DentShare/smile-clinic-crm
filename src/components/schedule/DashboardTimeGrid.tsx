@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragMoveEvent, MouseSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CurrentTimeIndicator } from '@/components/schedule/CurrentTimeIndicator';
@@ -9,7 +9,7 @@ import { isToday, setHours, setMinutes } from 'date-fns';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { formatPhone } from '@/lib/formatters';
-import { Phone, Plus, GripVertical } from 'lucide-react';
+import { Phone, Plus, GripVertical, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -137,6 +137,8 @@ export function DashboardTimeGrid({
 }: DashboardTimeGridProps) {
   const [hoveredSlot, setHoveredSlot] = useState<{ hour: number; minutes: number } | null>(null);
   const [activeAppointment, setActiveAppointment] = useState<(Appointment & { patient: Patient; doctor?: Profile }) | null>(null);
+  const [dragTargetTime, setDragTargetTime] = useState<{ hour: number; minute: number; top: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: { distance: 8 },
@@ -193,9 +195,31 @@ export function DashboardTimeGrid({
     }
   };
 
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const { active, delta } = event;
+    const appointment = appointments.find(a => a.id === active.id);
+    if (!appointment) return;
+
+    // Calculate target time with 15-minute snapping
+    const currentTop = getAppointmentPosition(appointment.start_time);
+    const newTop = currentTop + delta.y;
+    const minutesFromStart = (newTop / slotHeight) * 60;
+    const snappedMinutes = Math.round(minutesFromStart / 15) * 15;
+    
+    const newHour = workStart + Math.floor(snappedMinutes / 60);
+    const newMinute = snappedMinutes % 60;
+
+    // Validate bounds
+    if (newHour >= workStart && newHour <= workEnd) {
+      const snappedTop = (snappedMinutes / 60) * slotHeight;
+      setDragTargetTime({ hour: newHour, minute: newMinute, top: snappedTop });
+    }
+  }, [appointments, slotHeight, workStart, workEnd]);
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, delta } = event;
     setActiveAppointment(null);
+    setDragTargetTime(null);
 
     if (Math.abs(delta.y) < 5) return;
 
@@ -254,6 +278,7 @@ export function DashboardTimeGrid({
       sensors={sensors}
       collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
       <div className="h-full flex flex-col">
@@ -309,7 +334,7 @@ export function DashboardTimeGrid({
             ))}
 
             {/* Appointments overlay */}
-            <div className="absolute top-0 bottom-0 left-14 right-0">
+            <div className="absolute top-0 bottom-0 left-14 right-0" ref={gridRef}>
               {appointments.map((appointment) => (
                 <DraggableAppointmentCard
                   key={appointment.id}
@@ -320,6 +345,23 @@ export function DashboardTimeGrid({
                   onStatusChange={onAppointmentUpdated}
                 />
               ))}
+
+              {/* Drag target time indicator */}
+              {dragTargetTime && activeAppointment && (
+                <div
+                  className="absolute left-0 right-0 pointer-events-none z-40"
+                  style={{ top: `${dragTargetTime.top}px` }}
+                >
+                  {/* Target line */}
+                  <div className="absolute left-0 right-0 h-0.5 bg-primary shadow-sm" />
+                  
+                  {/* Time badge */}
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 whitespace-nowrap">
+                    <Clock className="h-3 w-3" />
+                    {dragTargetTime.hour.toString().padStart(2, '0')}:{dragTargetTime.minute.toString().padStart(2, '0')}
+                  </div>
+                </div>
+              )}
 
               {/* Current time indicator */}
               {isToday(selectedDate) && (
