@@ -414,7 +414,7 @@ const TreatmentPlanEditor = ({
                               onChange={(e) =>
                                 updateItem(stageIndex, itemIndex, 'quantity', e.target.value)
                               }
-                              className="h-8 text-xs"
+                              className="h-8 text-xs text-foreground"
                               min={1}
                             />
                           </div>
@@ -425,7 +425,7 @@ const TreatmentPlanEditor = ({
                               onChange={(e) =>
                                 updateItem(stageIndex, itemIndex, 'unit_price', e.target.value)
                               }
-                              className="h-8 text-xs"
+                              className="h-8 text-xs text-foreground"
                             />
                           </div>
                           <div className="col-span-2 flex items-center gap-1">
