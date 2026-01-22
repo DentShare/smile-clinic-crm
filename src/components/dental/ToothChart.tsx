@@ -4,7 +4,7 @@ import { ToothStatus, ToothStatusRecord } from '@/types/database';
 import Tooth from './Tooth';
 import ToothStatusLegend from './ToothStatusLegend';
 import ToothStatusEditor from './ToothStatusEditor';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 

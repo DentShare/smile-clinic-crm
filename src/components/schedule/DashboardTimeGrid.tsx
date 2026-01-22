@@ -10,7 +10,7 @@ import type { Appointment, Patient, Profile } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { formatPhone } from '@/lib/formatters';
 import { Phone, Plus, GripVertical, Clock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { toast } from 'sonner';
 
 interface DashboardTimeGridProps {
