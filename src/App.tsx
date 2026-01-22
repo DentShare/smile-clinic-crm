@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Pages
 import Index from "./pages/Index";
@@ -31,41 +32,43 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/accept-invitation" element={<AcceptInvitation />} />
-            
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/patients" element={<Patients />} />
-              <Route path="/patients/:id" element={<PatientDetail />} />
-              <Route path="/appointments" element={<Appointments />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/payments" element={<Payments />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/tooth-chart" element={<ToothChartDemo />} />
-              
-              {/* Super Admin Routes */}
-              <Route path="/admin" element={<SuperAdminDashboard />} />
-              <Route path="/admin/clinics" element={<SuperAdminDashboard />} />
-              <Route path="/admin/subscriptions" element={<SuperAdminDashboard />} />
-              <Route path="/admin/analytics" element={<SuperAdminDashboard />} />
-            </Route>
+      <ErrorBoundary>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/accept-invitation" element={<AcceptInvitation />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/patients" element={<Patients />} />
+                <Route path="/patients/:id" element={<PatientDetail />} />
+                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/tooth-chart" element={<ToothChartDemo />} />
+
+                {/* Super Admin Routes */}
+                <Route path="/admin" element={<SuperAdminDashboard />} />
+                <Route path="/admin/clinics" element={<SuperAdminDashboard />} />
+                <Route path="/admin/subscriptions" element={<SuperAdminDashboard />} />
+                <Route path="/admin/analytics" element={<SuperAdminDashboard />} />
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );
