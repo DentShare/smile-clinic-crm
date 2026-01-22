@@ -221,7 +221,13 @@ const PatientDetail = () => {
           />
 
           {/* Treatment Plans */}
-          <TreatmentPlanCard patientId={patient.id} readOnly={!canEditToothChart} />
+          <TreatmentPlanCard 
+            patientId={patient.id} 
+            patientName={patient.full_name}
+            patientPhone={patient.phone}
+            patientBirthDate={patient.birth_date}
+            readOnly={!canEditToothChart} 
+          />
 
           {/* Timeline - Scrollable */}
           <Card className="flex-1 min-h-0 flex flex-col">

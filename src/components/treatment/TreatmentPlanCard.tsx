@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +16,12 @@ import {
   AlertCircle,
   FileText,
   ChevronRight,
+  Printer,
+  Bell,
 } from 'lucide-react';
 import TreatmentPlanEditor from './TreatmentPlanEditor';
+import TreatmentPlanPrint from './TreatmentPlanPrint';
+import SendNotificationDialog from './SendNotificationDialog';
 
 interface TreatmentPlan {
   id: string;
@@ -54,6 +58,9 @@ interface TreatmentItem {
 
 interface TreatmentPlanCardProps {
   patientId: string;
+  patientName?: string;
+  patientPhone?: string;
+  patientBirthDate?: string;
   readOnly?: boolean;
 }
 
@@ -71,12 +78,21 @@ const stageStatusConfig = {
   skipped: { label: 'Пропущен', color: 'bg-muted-foreground' },
 };
 
-const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardProps) => {
+const TreatmentPlanCard = ({ 
+  patientId, 
+  patientName = '', 
+  patientPhone = '', 
+  patientBirthDate,
+  readOnly = false 
+}: TreatmentPlanCardProps) => {
   const { clinic, isDoctor, isClinicAdmin } = useAuth();
   const [plans, setPlans] = useState<TreatmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TreatmentPlan | null>(null);
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<TreatmentStage | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const canManage = isDoctor || isClinicAdmin;
 
@@ -167,6 +183,108 @@ const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardPro
   const handleEditPlan = (plan: TreatmentPlan) => {
     setSelectedPlan(plan);
     setIsEditorOpen(true);
+  };
+
+  const handlePrint = (plan: TreatmentPlan) => {
+    // Create a printable view
+    const printContent = `
+      <html>
+        <head>
+          <title>План лечения - ${plan.title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20mm; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            h2 { text-align: center; margin-bottom: 30px; }
+            .patient-info { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+            .stage { margin-bottom: 20px; }
+            .stage-title { background: #f5f5f5; padding: 10px; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background: #f9f9f9; }
+            .text-right { text-align: right; }
+            .total { font-weight: bold; font-size: 18px; text-align: right; margin-top: 20px; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+            .signature-box { width: 45%; }
+            .signature-line { border-bottom: 1px solid black; height: 50px; margin-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <h1>${clinic?.name || 'Клиника'}</h1>
+          <h2>ПЛАН ЛЕЧЕНИЯ</h2>
+          <div class="patient-info">
+            <div><strong>Пациент:</strong> ${patientName}</div>
+            <div><strong>Телефон:</strong> ${patientPhone}</div>
+            <div><strong>Дата:</strong> ${new Date().toLocaleDateString('ru-RU')}</div>
+          </div>
+          <h3>${plan.title}</h3>
+          ${plan.description ? `<p>${plan.description}</p>` : ''}
+          ${plan.stages?.map((stage, i) => `
+            <div class="stage">
+              <div class="stage-title">Этап ${i + 1}: ${stage.title}</div>
+              ${stage.description ? `<p style="padding: 0 10px;">${stage.description}</p>` : ''}
+              <table>
+                <thead>
+                  <tr>
+                    <th>№</th>
+                    <th>Услуга</th>
+                    <th>Зуб</th>
+                    <th class="text-right">Кол-во</th>
+                    <th class="text-right">Цена</th>
+                    <th class="text-right">Сумма</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${stage.items?.map((item, j) => `
+                    <tr>
+                      <td>${j + 1}</td>
+                      <td>${item.service_name}</td>
+                      <td>${item.tooth_number || '—'}</td>
+                      <td class="text-right">${item.quantity}</td>
+                      <td class="text-right">${item.unit_price.toLocaleString('ru-RU')} сум</td>
+                      <td class="text-right">${item.total_price.toLocaleString('ru-RU')} сум</td>
+                    </tr>
+                  `).join('') || ''}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="5" class="text-right"><strong>Итого по этапу:</strong></td>
+                    <td class="text-right"><strong>${stage.estimated_price.toLocaleString('ru-RU')} сум</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          `).join('') || ''}
+          <div class="total">ОБЩАЯ СТОИМОСТЬ: ${(plan.locked_price || plan.total_price).toLocaleString('ru-RU')} сум</div>
+          <div class="signatures">
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div>Врач: _______________________</div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div>Пациент: _______________________</div>
+            </div>
+          </div>
+          <div style="margin-top: 30px;">Дата: «____» ______________ 20___ г.</div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 250);
+    }
+  };
+
+  const handleNotifyStage = (plan: TreatmentPlan) => {
+    // Find the first pending stage
+    const pendingStage = plan.stages?.find(s => s.status === 'pending' || s.status === 'in_progress');
+    setSelectedStage(pendingStage || null);
+    setSelectedPlan(plan);
+    setNotificationDialogOpen(true);
   };
 
   if (loading) {
@@ -311,7 +429,7 @@ const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardPro
 
                           {/* Actions */}
                           {canManage && !readOnly && (
-                            <div className="flex gap-2 pt-2">
+                            <div className="flex flex-wrap gap-2 pt-2">
                               {plan.status === 'draft' && (
                                 <>
                                   <Button
@@ -328,10 +446,28 @@ const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardPro
                                 </>
                               )}
                               {plan.status === 'active' && (
-                                <Button size="sm" variant="outline" onClick={() => handleEditPlan(plan)}>
-                                  <ChevronRight className="h-3 w-3 mr-1" />
-                                  Открыть
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => handleEditPlan(plan)}>
+                                    <ChevronRight className="h-3 w-3 mr-1" />
+                                    Открыть
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handlePrint(plan)}
+                                  >
+                                    <Printer className="h-3 w-3 mr-1" />
+                                    Печать
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleNotifyStage(plan)}
+                                  >
+                                    <Bell className="h-3 w-3 mr-1" />
+                                    Напомнить
+                                  </Button>
+                                </>
                               )}
                             </div>
                           )}
@@ -354,6 +490,39 @@ const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardPro
         existingPlan={selectedPlan}
         onSave={fetchPlans}
       />
+
+      {/* Notification Dialog */}
+      {notificationDialogOpen && selectedPlan && clinic && (
+        <SendNotificationDialog
+          open={notificationDialogOpen}
+          onOpenChange={setNotificationDialogOpen}
+          patientId={patientId}
+          patientName={patientName}
+          patientPhone={patientPhone}
+          clinicId={clinic.id}
+          treatmentPlanId={selectedPlan.id}
+          stageId={selectedStage?.id}
+          stageName={selectedStage?.title}
+        />
+      )}
+
+      {/* Hidden print component */}
+      <div className="hidden">
+        <TreatmentPlanPrint
+          ref={printRef}
+          plan={selectedPlan || plans[0]}
+          patient={{
+            full_name: patientName,
+            phone: patientPhone,
+            birth_date: patientBirthDate,
+          }}
+          clinic={{
+            name: clinic?.name || '',
+            address: clinic?.address,
+            phone: clinic?.phone,
+          }}
+        />
+      </div>
     </>
   );
 };
