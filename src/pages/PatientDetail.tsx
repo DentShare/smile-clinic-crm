@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,7 +14,6 @@ import {
   ArrowLeft, 
   Phone, 
   Calendar, 
-  User, 
   FileText, 
   CreditCard,
   MessageCircle,
@@ -27,9 +26,10 @@ import {
 } from 'lucide-react';
 import ToothChart from '@/components/dental/ToothChart';
 import ToothStatusHistory from '@/components/dental/ToothStatusHistory';
+import TreatmentPlanCard from '@/components/treatment/TreatmentPlanCard';
+import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import { formatPhone } from '@/lib/formatters';
 
 const PatientDetail = () => {
@@ -38,6 +38,7 @@ const PatientDetail = () => {
   const { clinic, isDoctor, isClinicAdmin } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
 
   useEffect(() => {
     if (id && clinic) {
@@ -213,16 +214,14 @@ const PatientDetail = () => {
         {/* CENTER COLUMN - Tooth Chart & Timeline (Dynamic) */}
         <div className="lg:col-span-6 flex flex-col gap-4 min-h-0">
           {/* Tooth Chart - Always Visible */}
-          <Card className="shrink-0">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                🦷 Зубная формула
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <ToothChart patientId={patient.id} readOnly={!canEditToothChart} />
-            </CardContent>
-          </Card>
+          <ToothChart 
+            patientId={patient.id} 
+            readOnly={!canEditToothChart}
+            patientBirthDate={patient.birth_date}
+          />
+
+          {/* Treatment Plans */}
+          <TreatmentPlanCard patientId={patient.id} readOnly={!canEditToothChart} />
 
           {/* Timeline - Scrollable */}
           <Card className="flex-1 min-h-0 flex flex-col">
@@ -276,11 +275,7 @@ const PatientDetail = () => {
               <Button 
                 className="w-full justify-start gap-2" 
                 size="sm"
-                onClick={() => {
-                  // Navigate to appointments with patient pre-selected
-                  console.log('Create visit for patient:', patient.id);
-                  toast.info('Функция создания визита будет добавлена');
-                }}
+                onClick={() => setIsNewVisitOpen(true)}
               >
                 <Plus className="h-4 w-4" />
                 Создать визит
@@ -380,6 +375,14 @@ const PatientDetail = () => {
           </Card>
         </div>
       </div>
+
+      {/* New Visit SlideOver */}
+      <NewVisitSlideOver
+        open={isNewVisitOpen}
+        onOpenChange={setIsNewVisitOpen}
+        preSelectedPatientId={patient.id}
+        preSelectedPatientName={patient.full_name}
+      />
     </div>
   );
 };
