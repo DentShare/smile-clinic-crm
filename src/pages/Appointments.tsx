@@ -14,10 +14,8 @@ import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid';
 import { WeeklyScheduleGrid } from '@/components/schedule/WeeklyScheduleGrid';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
+import { useClinicWorkingHoursRange } from '@/hooks/use-working-hours';
 
-// Working hours
-const WORK_START = 9;
-const WORK_END = 20;
 const SLOT_HEIGHT = 60;
 
 type ViewMode = 'day' | 'week';
@@ -33,6 +31,9 @@ const Appointments = () => {
   const [newVisitTime, setNewVisitTime] = useState<string | undefined>();
   const [newVisitDate, setNewVisitDate] = useState<Date | undefined>();
   const [newVisitDoctorId, setNewVisitDoctorId] = useState<string | undefined>();
+
+  // Get clinic working hours
+  const { workStart, workEnd } = useClinicWorkingHoursRange();
 
   const fetchAppointments = async () => {
     if (!clinic?.id) return;
@@ -209,8 +210,8 @@ const Appointments = () => {
                 appointments={appointments}
                 doctors={doctors}
                 selectedDate={selectedDate}
-                workStart={WORK_START}
-                workEnd={WORK_END}
+                workStart={workStart}
+                workEnd={workEnd}
                 slotHeight={SLOT_HEIGHT}
                 onAppointmentUpdated={fetchAppointments}
                 onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
@@ -219,8 +220,8 @@ const Appointments = () => {
               <WeeklyScheduleGrid
                 appointments={appointments}
                 selectedDate={selectedDate}
-                workStart={WORK_START}
-                workEnd={WORK_END}
+                workStart={workStart}
+                workEnd={workEnd}
                 slotHeight={SLOT_HEIGHT}
                 onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
               />
