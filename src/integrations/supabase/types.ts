@@ -606,6 +606,73 @@ export type Database = {
           },
         ]
       }
+      patient_notifications: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          error_message: string | null
+          external_id: string | null
+          id: string
+          message: string
+          patient_id: string
+          sent_at: string | null
+          stage_id: string | null
+          status: string | null
+          treatment_plan_id: string | null
+          type: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          message: string
+          patient_id: string
+          sent_at?: string | null
+          stage_id?: string | null
+          status?: string | null
+          treatment_plan_id?: string | null
+          type: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          external_id?: string | null
+          id?: string
+          message?: string
+          patient_id?: string
+          sent_at?: string | null
+          stage_id?: string | null
+          status?: string | null
+          treatment_plan_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notifications_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plan_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notifications_treatment_plan_id_fkey"
+            columns: ["treatment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string | null
@@ -618,6 +685,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           notes: string | null
+          notification_preferences: Json | null
           phone: string
           phone_secondary: string | null
           pinfl: string | null
@@ -635,6 +703,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           notes?: string | null
+          notification_preferences?: Json | null
           phone: string
           phone_secondary?: string | null
           pinfl?: string | null
@@ -652,6 +721,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           notes?: string | null
+          notification_preferences?: Json | null
           phone?: string
           phone_secondary?: string | null
           pinfl?: string | null
@@ -752,6 +822,7 @@ export type Database = {
           service_id: string | null
           tooth_number: number | null
           total: number
+          treatment_plan_item_id: string | null
         }
         Insert: {
           appointment_id: string
@@ -765,6 +836,7 @@ export type Database = {
           service_id?: string | null
           tooth_number?: number | null
           total: number
+          treatment_plan_item_id?: string | null
         }
         Update: {
           appointment_id?: string
@@ -778,6 +850,7 @@ export type Database = {
           service_id?: string | null
           tooth_number?: number | null
           total?: number
+          treatment_plan_item_id?: string | null
         }
         Relationships: [
           {
@@ -799,6 +872,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performed_works_treatment_plan_item_id_fkey"
+            columns: ["treatment_plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plan_items"
             referencedColumns: ["id"]
           },
         ]
