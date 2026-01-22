@@ -5,7 +5,7 @@ import { CurrentTimeIndicator } from '@/components/schedule/CurrentTimeIndicator
 import { DraggableAppointment } from '@/components/schedule/DraggableAppointment';
 import { DroppableTimeSlot } from '@/components/schedule/DroppableTimeSlot';
 import { TimeSlotHoverPreview } from '@/components/schedule/TimeSlotHoverPreview';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { toast } from 'sonner';
 import { isToday, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
