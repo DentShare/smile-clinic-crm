@@ -210,7 +210,7 @@ const TreatmentPlanCard = ({ patientId, readOnly = false }: TreatmentPlanCardPro
               )}
             </div>
           ) : (
-            <ScrollArea className="max-h-[400px]">
+            <ScrollArea className="max-h-[250px]">
               <Accordion type="single" collapsible className="w-full">
                 {plans.map((plan) => {
                   const config = statusConfig[plan.status as keyof typeof statusConfig] || statusConfig.draft;

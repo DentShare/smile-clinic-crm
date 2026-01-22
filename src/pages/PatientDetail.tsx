@@ -232,7 +232,7 @@ const PatientDetail = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 min-h-0">
-              <ScrollArea className="h-full max-h-[400px]">
+              <ScrollArea className="h-full max-h-[300px]">
                 <div className="p-4 space-y-3">
                   {/* Timeline items - Mixed visits, payments, x-rays */}
                   <TimelineItem 
