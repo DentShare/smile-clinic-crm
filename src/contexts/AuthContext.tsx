@@ -58,7 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (clinicData) {
-            setClinic(clinicData as Clinic);
+            // Map the raw data to our Clinic type
+            const mappedClinic: Clinic = {
+              ...clinicData,
+              is_active: clinicData.is_active ?? true,
+              settings: clinicData.settings as Clinic['settings'],
+            };
+            setClinic(mappedClinic);
           }
         }
       }

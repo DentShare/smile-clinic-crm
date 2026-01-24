@@ -25,11 +25,16 @@ export interface Clinic {
     language: string;
     currency: string;
     timezone: string;
-  };
+  } | null;
   logo_url?: string;
   address?: string;
   phone?: string;
   email?: string;
+  owner_name?: string;
+  inn?: string;
+  acquisition_source?: string;
+  acquisition_campaign?: string;
+  admin_notes?: string;
   created_at: string;
   updated_at: string;
 }

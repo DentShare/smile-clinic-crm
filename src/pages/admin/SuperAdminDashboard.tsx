@@ -1,172 +1,123 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/clientRuntime';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, DollarSign, Users, TrendingUp, AlertTriangle } from 'lucide-react';
-import ClinicsManagement from '@/components/admin/ClinicsManagement';
-import MRRChart from '@/components/admin/MRRChart';
-import SubscriptionStats from '@/components/admin/SubscriptionStats';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 
-interface DashboardStats {
-  totalClinics: number;
-  activeSubscriptions: number;
-  trialClinics: number;
-  expiredClinics: number;
-  mrr: number;
-}
+import { useSuperAdminData } from '@/hooks/use-super-admin-data';
+import { KPICards } from '@/components/admin/KPICards';
+import { TenantsTable } from '@/components/admin/TenantsTable';
+import { AcquisitionChart } from '@/components/admin/AcquisitionChart';
+import { ClinicDetailDrawer } from '@/components/admin/ClinicDetailDrawer';
+import { ExtendSubscriptionDialog } from '@/components/admin/ExtendSubscriptionDialog';
+import MRRChart from '@/components/admin/MRRChart';
+import type { ClinicTenant } from '@/types/superAdmin';
 
 const SuperAdminDashboard = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalClinics: 0,
-    activeSubscriptions: 0,
-    trialClinics: 0,
-    expiredClinics: 0,
-    mrr: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const { clinics, kpis, acquisitionData, loading, refresh } = useSuperAdminData();
+  
+  const [selectedClinic, setSelectedClinic] = useState<ClinicTenant | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [extendDialogOpen, setExtendDialogOpen] = useState(false);
+  const [extendClinic, setExtendClinic] = useState<ClinicTenant | null>(null);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  const handleSelectClinic = (clinic: ClinicTenant) => {
+    setSelectedClinic(clinic);
+    setDrawerOpen(true);
+  };
 
-  const fetchStats = async () => {
+  const handleLoginAsClinic = (clinic: ClinicTenant) => {
+    // TODO: Implement impersonation feature
+    toast.info(`Функция "Войти как клиника" в разработке`);
+  };
+
+  const handleExtendSubscription = (clinic: ClinicTenant) => {
+    setExtendClinic(clinic);
+    setExtendDialogOpen(true);
+  };
+
+  const handleBlockClinic = async (clinic: ClinicTenant) => {
     try {
-      // Fetch clinics count
-      const { count: clinicsCount } = await supabase
+      const newStatus = !clinic.is_active;
+      const { error } = await supabase
         .from('clinics')
-        .select('*', { count: 'exact', head: true });
+        .update({ is_active: newStatus })
+        .eq('id', clinic.id);
 
-      // Fetch subscriptions with their plans
-      const { data: subscriptions } = await supabase
-        .from('clinic_subscriptions')
-        .select(`
-          status,
-          plan_id,
-          subscription_plans (price_monthly)
-        `);
-
-      let activeCount = 0;
-      let trialCount = 0;
-      let expiredCount = 0;
-      let monthlyRevenue = 0;
-
-      subscriptions?.forEach((sub: any) => {
-        if (sub.status === 'active') {
-          activeCount++;
-          monthlyRevenue += Number(sub.subscription_plans?.price_monthly || 0);
-        } else if (sub.status === 'trial') {
-          trialCount++;
-        } else if (sub.status === 'expired' || sub.status === 'cancelled') {
-          expiredCount++;
-        }
-      });
-
-      setStats({
-        totalClinics: clinicsCount || 0,
-        activeSubscriptions: activeCount,
-        trialClinics: trialCount,
-        expiredClinics: expiredCount,
-        mrr: monthlyRevenue,
-      });
+      if (error) throw error;
+      
+      toast.success(newStatus ? 'Клиника разблокирована' : 'Клиника заблокирована');
+      refresh();
     } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error blocking clinic:', error);
+      toast.error('Ошибка при изменении статуса');
     }
   };
 
-  const statCards = [
-    {
-      title: 'Всего клиник',
-      value: stats.totalClinics,
-      icon: Building2,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
-    },
-    {
-      title: 'MRR',
-      value: `${stats.mrr.toLocaleString()} сум`,
-      icon: DollarSign,
-      color: 'text-chart-2',
-      bgColor: 'bg-chart-2/10',
-    },
-    {
-      title: 'Активные подписки',
-      value: stats.activeSubscriptions,
-      icon: TrendingUp,
-      color: 'text-chart-3',
-      bgColor: 'bg-chart-3/10',
-    },
-    {
-      title: 'На пробном периоде',
-      value: stats.trialClinics,
-      icon: Users,
-      color: 'text-chart-4',
-      bgColor: 'bg-chart-4/10',
-    },
-    {
-      title: 'Просроченные',
-      value: stats.expiredClinics,
-      icon: AlertTriangle,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
-    },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Загрузка...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Панель Super Admin</h1>
-        <p className="text-muted-foreground">Управление платформой DentaClinic</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Super Admin</h1>
+          <p className="text-muted-foreground">Управление платформой DentaClinic</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Обновить
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {statCards.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-xl font-bold">{stat.value}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* KPI Cards */}
+      <KPICards kpis={kpis} loading={loading} />
 
       {/* Main Content */}
-      <Tabs defaultValue="clinics" className="space-y-4">
+      <Tabs defaultValue="tenants" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="clinics">Клиники</TabsTrigger>
+          <TabsTrigger value="tenants">Клиники</TabsTrigger>
+          <TabsTrigger value="acquisition">Маркетинг</TabsTrigger>
           <TabsTrigger value="mrr">MRR Аналитика</TabsTrigger>
-          <TabsTrigger value="subscriptions">Подписки</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="clinics">
-          <ClinicsManagement onUpdate={fetchStats} />
+        <TabsContent value="tenants">
+          <TenantsTable
+            clinics={clinics}
+            onSelectClinic={handleSelectClinic}
+            onLoginAsClinic={handleLoginAsClinic}
+            onExtendSubscription={handleExtendSubscription}
+            onBlockClinic={handleBlockClinic}
+            loading={loading}
+          />
+        </TabsContent>
+
+        <TabsContent value="acquisition">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AcquisitionChart data={acquisitionData} loading={loading} />
+            <MRRChart />
+          </div>
         </TabsContent>
 
         <TabsContent value="mrr">
           <MRRChart />
         </TabsContent>
-
-        <TabsContent value="subscriptions">
-          <SubscriptionStats />
-        </TabsContent>
       </Tabs>
+
+      {/* Clinic Detail Drawer */}
+      <ClinicDetailDrawer
+        clinic={selectedClinic}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onRefresh={refresh}
+      />
+
+      {/* Extend Subscription Dialog */}
+      <ExtendSubscriptionDialog
+        clinic={extendClinic}
+        open={extendDialogOpen}
+        onOpenChange={setExtendDialogOpen}
+        onSuccess={refresh}
+      />
     </div>
   );
 };
