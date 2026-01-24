@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -23,9 +25,13 @@ import Documents from "./pages/Documents";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ToothChartDemo from "./pages/ToothChartDemo";
-import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import NotFound from "./pages/NotFound";
+
+// Admin Pages
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminAlerts from "./pages/admin/AdminAlerts";
 
 const queryClient = new QueryClient();
 
@@ -56,12 +62,18 @@ const App = () => (
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/tooth-chart" element={<ToothChartDemo />} />
+              </Route>
 
-                {/* Super Admin Routes */}
-                <Route path="/admin" element={<SuperAdminDashboard />} />
-                <Route path="/admin/clinics" element={<SuperAdminDashboard />} />
-                <Route path="/admin/subscriptions" element={<SuperAdminDashboard />} />
-                <Route path="/admin/analytics" element={<SuperAdminDashboard />} />
+              {/* Super Admin Routes - Separate Portal */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/clinics" element={<AdminDashboard />} />
+                <Route path="/admin/subscriptions" element={<AdminDashboard />} />
+                <Route path="/admin/analytics" element={<AdminDashboard />} />
+                <Route path="/admin/alerts" element={<AdminAlerts />} />
+                <Route path="/admin/settings" element={<AdminDashboard />} />
+                <Route path="/admin" element={<AdminDashboard />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
