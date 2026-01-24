@@ -24,9 +24,11 @@ import {
   X,
   Loader2,
   ExternalLink,
+  CheckCircle2,
 } from 'lucide-react';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { CompleteVisitDialog } from '@/components/appointments/CompleteVisitDialog';
 
 interface AppointmentQuickViewProps {
   appointment: Appointment & { patient: Patient; doctor?: Profile };
@@ -50,11 +52,13 @@ export function AppointmentQuickView({
 }: AppointmentQuickViewProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
 
   const status = statusConfig[appointment.status || 'scheduled'] || statusConfig.scheduled;
   const hasDebt = (appointment.patient?.balance ?? 0) < 0;
   const isCancelled = appointment.status === 'cancelled' || appointment.status === 'no_show';
   const isCompleted = appointment.status === 'completed';
+  const canComplete = !isCompleted && !isCancelled;
 
   const handleCancel = async () => {
     setIsCancelling(true);
@@ -86,6 +90,7 @@ export function AppointmentQuickView({
   };
 
   return (
+    <>
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {children}
@@ -165,37 +170,66 @@ export function AppointmentQuickView({
         <Separator />
 
         {/* Actions */}
-        <div className="p-3 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 gap-1.5"
-            asChild
-          >
-            <Link to={`/patients/${appointment.patient_id}`}>
-              <ExternalLink className="h-3.5 w-3.5" />
-              Карта пациента
-            </Link>
-          </Button>
-
-          {!isCompleted && !isCancelled && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="gap-1.5"
-              onClick={handleCancel}
-              disabled={isCancelling}
+        <div className="p-3 space-y-2">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 gap-1.5"
+              asChild
             >
-              {isCancelling ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <X className="h-3.5 w-3.5" />
-              )}
-              Отменить
+              <Link to={`/patients/${appointment.patient_id}`}>
+                <ExternalLink className="h-3.5 w-3.5" />
+                Карта пациента
+              </Link>
+            </Button>
+
+            {!isCompleted && !isCancelled && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleCancel}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <X className="h-3.5 w-3.5" />
+                )}
+                Отменить
+              </Button>
+            )}
+          </div>
+
+          {canComplete && (
+            <Button
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => {
+                setCompleteDialogOpen(true);
+                setIsOpen(false);
+              }}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Завершить визит
             </Button>
           )}
         </div>
       </PopoverContent>
     </Popover>
+
+    <CompleteVisitDialog
+      open={completeDialogOpen}
+      onOpenChange={setCompleteDialogOpen}
+      appointmentId={appointment.id}
+      patientId={appointment.patient_id}
+      patientName={appointment.patient?.full_name || ''}
+      doctorId={appointment.doctor_id || undefined}
+      onComplete={() => {
+        onStatusChange?.();
+      }}
+    />
+    </>
   );
 }

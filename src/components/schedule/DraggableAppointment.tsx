@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
-import { Clock, DollarSign, UserCheck, CalendarClock, GripVertical } from 'lucide-react';
+import { Clock, DollarSign, UserCheck, CalendarClock, GripVertical, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Appointment, Patient, Profile } from '@/types/database';
+import { CompleteVisitDialog } from '@/components/appointments/CompleteVisitDialog';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   scheduled: { label: 'Запланирован', color: 'bg-info/10 text-info border-info/20', icon: CalendarClock },
@@ -24,6 +26,7 @@ interface DraggableAppointmentProps {
   isHovered: boolean;
   onHover: (hovered: boolean) => void;
   isDraggingDisabled?: boolean;
+  onStatusChange?: () => void;
 }
 
 export function DraggableAppointment({
@@ -33,7 +36,10 @@ export function DraggableAppointment({
   isHovered,
   onHover,
   isDraggingDisabled = false,
+  onStatusChange,
 }: DraggableAppointmentProps) {
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appointment.id,
     data: { appointment },
@@ -44,6 +50,7 @@ export function DraggableAppointment({
   const StatusIcon = status.icon;
   const hasDebt = appointment.patient?.balance < 0;
   const canDrag = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
+  const canComplete = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('ru-RU', {
@@ -61,6 +68,7 @@ export function DraggableAppointment({
   };
 
   return (
+    <>
     <Tooltip open={isHovered && !isDragging}>
       <TooltipTrigger asChild>
         <div
@@ -140,18 +148,19 @@ export function DraggableAppointment({
 
           {/* Quick Actions */}
           <div className="flex gap-1 pt-2 border-t">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="flex-1 h-7 text-xs gap-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log('Check-in:', appointment.id);
-              }}
-            >
-              <UserCheck className="h-3 w-3" />
-              Check-in
-            </Button>
+            {canComplete && (
+              <Button 
+                size="sm" 
+                className="flex-1 h-7 text-xs gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCompleteDialogOpen(true);
+                }}
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Завершить
+              </Button>
+            )}
             <Button 
               size="sm" 
               variant="ghost" 
@@ -168,5 +177,18 @@ export function DraggableAppointment({
         </div>
       </TooltipContent>
     </Tooltip>
+
+    <CompleteVisitDialog
+      open={completeDialogOpen}
+      onOpenChange={setCompleteDialogOpen}
+      appointmentId={appointment.id}
+      patientId={appointment.patient_id}
+      patientName={appointment.patient?.full_name || ''}
+      doctorId={appointment.doctor_id || undefined}
+      onComplete={() => {
+        onStatusChange?.();
+      }}
+    />
+    </>
   );
 }
