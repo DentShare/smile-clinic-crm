@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useToast } from '@/hooks/use-toast';
 
 export interface FinanceSummary {
