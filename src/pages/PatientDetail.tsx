@@ -28,6 +28,8 @@ import ToothChart from '@/components/dental/ToothChart';
 import ToothStatusHistory from '@/components/dental/ToothStatusHistory';
 import TreatmentPlanCard from '@/components/treatment/TreatmentPlanCard';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
+import { PatientFinanceSummary } from '@/components/finance/PatientFinanceSummary';
+import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
 import { formatPhone } from '@/lib/formatters';
@@ -39,6 +41,8 @@ const PatientDetail = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
 
   useEffect(() => {
     if (id && clinic) {
@@ -314,16 +318,19 @@ const PatientDetail = () => {
                 variant="outline" 
                 className="w-full justify-start gap-2" 
                 size="sm"
-                onClick={() => {
-                  console.log('Accept payment from patient:', patient.id);
-                  toast.info('Функция приёма оплаты будет добавлена');
-                }}
+                onClick={() => setIsPaymentOpen(true)}
               >
                 <CreditCard className="h-4 w-4" />
                 Принять оплату
               </Button>
             </CardContent>
           </Card>
+
+          {/* Finance Summary */}
+          <PatientFinanceSummary 
+            patientId={patient.id} 
+            key={financeRefreshKey}
+          />
 
           {/* Upcoming Appointments */}
           <Card>
@@ -388,6 +395,19 @@ const PatientDetail = () => {
         onOpenChange={setIsNewVisitOpen}
         preSelectedPatientId={patient.id}
         preSelectedPatientName={patient.full_name}
+      />
+
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={isPaymentOpen}
+        onOpenChange={setIsPaymentOpen}
+        patientId={patient.id}
+        patientName={patient.full_name}
+        currentDebt={patient.balance < 0 ? Math.abs(patient.balance) : 0}
+        onPaymentComplete={() => {
+          fetchPatient();
+          setFinanceRefreshKey(prev => prev + 1);
+        }}
       />
     </div>
   );

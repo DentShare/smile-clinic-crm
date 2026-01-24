@@ -33,7 +33,7 @@ const clinicNavItems: NavItem[] = [
   { title: 'Зубная формула', href: '/tooth-chart', icon: Smile },
   { title: 'Услуги', href: '/services', icon: Stethoscope },
   { title: 'Склад', href: '/inventory', icon: Package },
-  { title: 'Финансы', href: '/payments', icon: CreditCard },
+  { title: 'Финансы', href: '/finance', icon: CreditCard },
   { title: 'Документы', href: '/documents', icon: FileText },
   { title: 'Аналитика', href: '/analytics', icon: BarChart3 },
   { title: 'Настройки', href: '/settings', icon: Settings, roles: ['clinic_admin'] },

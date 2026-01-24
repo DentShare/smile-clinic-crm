@@ -21,6 +21,7 @@ import Appointments from "./pages/Appointments";
 import Services from "./pages/Services";
 import Inventory from "./pages/Inventory";
 import Payments from "./pages/Payments";
+import Finance from "./pages/Finance";
 import Documents from "./pages/Documents";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/services" element={<Services />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/finance" element={<Finance />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
