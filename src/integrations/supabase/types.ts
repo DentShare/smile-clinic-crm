@@ -787,6 +787,7 @@ export type Database = {
           appointment_id: string | null
           clinic_id: string
           created_at: string | null
+          fiscal_check_url: string | null
           fiscal_receipt_number: string | null
           id: string
           is_fiscalized: boolean | null
@@ -800,6 +801,7 @@ export type Database = {
           appointment_id?: string | null
           clinic_id: string
           created_at?: string | null
+          fiscal_check_url?: string | null
           fiscal_receipt_number?: string | null
           id?: string
           is_fiscalized?: boolean | null
@@ -813,6 +815,7 @@ export type Database = {
           appointment_id?: string | null
           clinic_id?: string
           created_at?: string | null
+          fiscal_check_url?: string | null
           fiscal_receipt_number?: string | null
           id?: string
           is_fiscalized?: boolean | null
@@ -859,7 +862,9 @@ export type Database = {
           created_at: string | null
           discount_percent: number | null
           doctor_comment: string | null
+          doctor_id: string | null
           id: string
+          patient_id: string | null
           price: number
           quantity: number | null
           service_id: string | null
@@ -873,7 +878,9 @@ export type Database = {
           created_at?: string | null
           discount_percent?: number | null
           doctor_comment?: string | null
+          doctor_id?: string | null
           id?: string
+          patient_id?: string | null
           price: number
           quantity?: number | null
           service_id?: string | null
@@ -887,7 +894,9 @@ export type Database = {
           created_at?: string | null
           discount_percent?: number | null
           doctor_comment?: string | null
+          doctor_id?: string | null
           id?: string
+          patient_id?: string | null
           price?: number
           quantity?: number | null
           service_id?: string | null
@@ -908,6 +917,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performed_works_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
           {
@@ -1461,6 +1477,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_patient_balance: {
+        Args: { p_patient_id: string }
+        Returns: number
+      }
       can_manage_role: {
         Args: {
           _target_role: Database["public"]["Enums"]["app_role"]
@@ -1475,6 +1495,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      complete_treatment_services: {
+        Args: {
+          p_appointment_id: string
+          p_doctor_id: string
+          p_item_ids: string[]
+        }
+        Returns: Json
+      }
+      get_patient_finance_summary: {
+        Args: { p_patient_id: string }
+        Returns: Json
+      }
       get_user_clinic_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1484,6 +1516,19 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      process_patient_payment: {
+        Args: {
+          p_amount: number
+          p_appointment_id?: string
+          p_clinic_id: string
+          p_fiscal_check_url?: string
+          p_method: string
+          p_notes?: string
+          p_patient_id: string
+          p_received_by?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:
@@ -1492,6 +1537,17 @@ export type Database = {
         | "doctor"
         | "reception"
         | "nurse"
+      payment_method_enum:
+        | "cash"
+        | "card_terminal"
+        | "uzcard"
+        | "humo"
+        | "visa"
+        | "mastercard"
+        | "click"
+        | "payme"
+        | "uzum"
+        | "bank_transfer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1620,6 +1676,18 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "clinic_admin", "doctor", "reception", "nurse"],
+      payment_method_enum: [
+        "cash",
+        "card_terminal",
+        "uzcard",
+        "humo",
+        "visa",
+        "mastercard",
+        "click",
+        "payme",
+        "uzum",
+        "bank_transfer",
+      ],
     },
   },
 } as const

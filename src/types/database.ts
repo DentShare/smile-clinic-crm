@@ -133,6 +133,8 @@ export interface PerformedWork {
   doctor_comment?: string;
   created_at: string;
   service?: Service;
+  patient_id?: string;
+  doctor_id?: string;
 }
 
 export interface Payment {
@@ -144,6 +146,7 @@ export interface Payment {
   payment_method: PaymentMethod;
   is_fiscalized: boolean;
   fiscal_receipt_number?: string;
+  fiscal_check_url?: string;
   notes?: string;
   received_by?: string;
   created_at: string;
