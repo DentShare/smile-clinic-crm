@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { CurrencyDisplay } from "@/components/ui/currency-display";
 import { CreditCard, Banknote, Smartphone, Plus, X } from "lucide-react";
 
-type PaymentMethod = 'cash' | 'terminal' | 'click' | 'payme' | 'uzum';
+type PaymentMethod = 'cash' | 'card_terminal' | 'click' | 'payme' | 'uzum';
 
 interface PaymentSplit {
   method: PaymentMethod;
@@ -22,7 +22,7 @@ interface PaymentMethodSelectorProps {
 
 const paymentMethods: { id: PaymentMethod; label: string; icon: React.ElementType }[] = [
   { id: 'cash', label: 'Наличные', icon: Banknote },
-  { id: 'terminal', label: 'Терминал', icon: CreditCard },
+  { id: 'card_terminal', label: 'Терминал', icon: CreditCard },
   { id: 'click', label: 'Click', icon: Smartphone },
   { id: 'payme', label: 'Payme', icon: Smartphone },
   { id: 'uzum', label: 'Uzum', icon: Smartphone },
