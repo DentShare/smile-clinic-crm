@@ -135,6 +135,41 @@ export type Database = {
           },
         ]
       }
+      billing_manual_adjustments: {
+        Row: {
+          adjusted_by: string | null
+          clinic_id: string
+          created_at: string | null
+          days_added: number
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          adjusted_by?: string | null
+          clinic_id: string
+          created_at?: string | null
+          days_added: number
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          adjusted_by?: string | null
+          clinic_id?: string
+          created_at?: string | null
+          days_added?: number
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_manual_adjustments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_subscriptions: {
         Row: {
           clinic_id: string
@@ -188,39 +223,54 @@ export type Database = {
       }
       clinics: {
         Row: {
+          acquisition_campaign: string | null
+          acquisition_source: string | null
           address: string | null
+          admin_notes: string | null
           created_at: string | null
           email: string | null
           id: string
+          inn: string | null
           is_active: boolean | null
           logo_url: string | null
           name: string
+          owner_name: string | null
           phone: string | null
           settings: Json | null
           subdomain: string
           updated_at: string | null
         }
         Insert: {
+          acquisition_campaign?: string | null
+          acquisition_source?: string | null
           address?: string | null
+          admin_notes?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          inn?: string | null
           is_active?: boolean | null
           logo_url?: string | null
           name: string
+          owner_name?: string | null
           phone?: string | null
           settings?: Json | null
           subdomain: string
           updated_at?: string | null
         }
         Update: {
+          acquisition_campaign?: string | null
+          acquisition_source?: string | null
           address?: string | null
+          admin_notes?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          inn?: string | null
           is_active?: boolean | null
           logo_url?: string | null
           name?: string
+          owner_name?: string | null
           phone?: string | null
           settings?: Json | null
           subdomain?: string
