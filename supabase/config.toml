@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-patient-notification]
 verify_jwt = false
+
+[functions.patient-finance]
+verify_jwt = false
