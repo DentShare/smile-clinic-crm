@@ -30,12 +30,6 @@ export interface LedgerEntry {
   discount?: number;
 }
 
-export interface LedgerResponse {
-  ledger: LedgerEntry[];
-  total: number;
-  current_balance: number;
-}
-
 export interface CompleteServicesResult {
   success: boolean;
   completed_count?: number;
@@ -76,8 +70,10 @@ export function usePatientFinance(patientId?: string) {
 
       if (rpcError) throw rpcError;
       
-      setSummary(data as unknown as FinanceSummary);
-      return data as unknown as FinanceSummary;
+      const result = data as unknown as FinanceSummary;
+      setSummary(result);
+      setFinancialState(result);
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch summary';
       setError(message);
@@ -87,6 +83,9 @@ export function usePatientFinance(patientId?: string) {
       setLoading(false);
     }
   }, [patientId]);
+
+  // Alias for backward compatibility
+  const fetchFinancialState = fetchSummary;
 
   // Fetch detailed ledger
   const fetchLedger = useCallback(async (pId?: string, limit = 50, offset = 0) => {
@@ -173,6 +172,14 @@ export function usePatientFinance(patientId?: string) {
     }
   }, [patientId]);
 
+  // Load more ledger entries
+  const loadMoreLedger = useCallback(async (pId: string, limit: number, offset: number) => {
+    const result = await fetchLedger(pId, limit + offset, 0);
+    if (result) {
+      setLedger(result.ledger.slice(0, limit + offset));
+    }
+  }, [fetchLedger]);
+
   // Complete services from treatment plan
   const completeServices = useCallback(async (
     appointmentId: string,
@@ -240,7 +247,7 @@ export function usePatientFinance(patientId?: string) {
         .from('profiles')
         .select('clinic_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!profile?.clinic_id) throw new Error('No clinic associated');
 
@@ -295,28 +302,10 @@ export function usePatientFinance(patientId?: string) {
 
       if (error) throw error;
       return data as number;
-    } catch (err) {
-      console.error('[usePatientFinance] calculateBalance error:', err);
+    } catch {
       return null;
     }
   }, [patientId]);
-
-  // Load more ledger entries
-  const loadMoreLedger = useCallback(async (pId: string, limit: number, offset: number) => {
-    const result = await fetchLedger(pId, limit, offset);
-    if (result) {
-      setLedger(prev => [...prev, ...result.ledger.slice(offset, offset + limit)]);
-    }
-  }, [fetchLedger]);
-
-  // Fetch financial state (alias for fetchSummary)
-  const fetchFinancialState = useCallback(async (pId?: string) => {
-    const result = await fetchSummary(pId);
-    if (result) {
-      setFinancialState(result);
-    }
-    return result;
-  }, [fetchSummary]);
 
   return {
     summary,
@@ -326,9 +315,9 @@ export function usePatientFinance(patientId?: string) {
     error,
     financialState,
     fetchSummary,
+    fetchFinancialState,
     fetchLedger,
     loadMoreLedger,
-    fetchFinancialState,
     completeServices,
     processPayment,
     calculateBalance,

@@ -13,17 +13,9 @@ import {
 } from '@/components/ui/table';
 import { Loader2, CreditCard, Banknote, Wallet } from 'lucide-react';
 import type { Payment } from '@/types/database';
+import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 
-const paymentMethodLabels: Record<string, string> = {
-  cash: 'Наличные',
-  uzcard: 'UzCard',
-  humo: 'Humo',
-  visa: 'Visa',
-  mastercard: 'MasterCard',
-  click: 'Click',
-  payme: 'Payme',
-  transfer: 'Перевод'
-};
+const paymentMethodLabels = PAYMENT_METHOD_LABELS;
 
 const paymentMethodIcons: Record<string, React.ReactNode> = {
   cash: <Banknote className="h-4 w-4" />,
@@ -71,11 +63,11 @@ const Payments = () => {
       startOfWeek.setDate(now.getDate() - now.getDay());
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      const today = data?.filter(p => new Date(p.created_at) >= startOfToday)
+      const today = data?.filter(p => p.created_at && new Date(p.created_at) >= startOfToday)
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const week = data?.filter(p => new Date(p.created_at) >= startOfWeek)
+      const week = data?.filter(p => p.created_at && new Date(p.created_at) >= startOfWeek)
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const month = data?.filter(p => new Date(p.created_at) >= startOfMonth)
+      const month = data?.filter(p => p.created_at && new Date(p.created_at) >= startOfMonth)
         .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
       setStats({ today, week, month });
@@ -154,13 +146,13 @@ const Payments = () => {
               {payments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell>
-                    {new Date(payment.created_at).toLocaleDateString('ru-RU', {
+                    {payment.created_at ? new Date(payment.created_at).toLocaleDateString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) : '—'}
                   </TableCell>
                   <TableCell className="font-medium">
                     {payment.patient?.full_name || '—'}
