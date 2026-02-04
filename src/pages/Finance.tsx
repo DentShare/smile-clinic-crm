@@ -42,11 +42,12 @@ import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, ea
 import { ru } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatters';
+import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 
 interface IncomeData {
   date: string;
   income: number;
-  expenses: number;
+  charges: number;
 }
 
 interface DebtorInfo {
@@ -78,7 +79,7 @@ const Finance = () => {
   const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [stats, setStats] = useState({
     totalIncome: 0,
-    totalExpenses: 0,
+    totalCharges: 0,
     totalDebt: 0,
     debtorsCount: 0,
     avgPayment: 0,
@@ -138,18 +139,18 @@ const Finance = () => {
         const dayEnd = new Date(day);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const dayPayments = paymentsData?.filter(p => 
-          isWithinInterval(new Date(p.created_at), { start: dayStart, end: dayEnd })
+        const dayPayments = paymentsData?.filter(p =>
+          p.created_at && isWithinInterval(new Date(p.created_at), { start: dayStart, end: dayEnd })
         ) || [];
-        
-        const dayWorks = worksData?.filter(w => 
-          isWithinInterval(new Date(w.created_at), { start: dayStart, end: dayEnd })
+
+        const dayWorks = worksData?.filter(w =>
+          w.created_at && isWithinInterval(new Date(w.created_at), { start: dayStart, end: dayEnd })
         ) || [];
 
         return {
           date: dayStr,
           income: dayPayments.reduce((sum, p) => sum + Number(p.amount), 0),
-          expenses: dayWorks.reduce((sum, w) => sum + Number(w.total), 0)
+          charges: dayWorks.reduce((sum, w) => sum + Number(w.total), 0)
         };
       });
 
@@ -157,7 +158,7 @@ const Finance = () => {
 
       // Calculate stats
       const totalIncome = paymentsData?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const totalExpenses = worksData?.reduce((sum, w) => sum + Number(w.total), 0) || 0;
+      const totalCharges = worksData?.reduce((sum, w) => sum + Number(w.total), 0) || 0;
       const avgPayment = paymentsData?.length ? totalIncome / paymentsData.length : 0;
 
       // Payment method stats
@@ -194,7 +195,7 @@ const Finance = () => {
 
       setStats({
         totalIncome,
-        totalExpenses,
+        totalCharges,
         totalDebt,
         debtorsCount: debtorsData?.length || 0,
         avgPayment,
@@ -249,18 +250,7 @@ const Finance = () => {
     }
   };
 
-  const paymentMethodLabels: Record<string, string> = {
-    cash: 'Наличные',
-    card_terminal: 'Терминал',
-    uzcard: 'UzCard',
-    humo: 'Humo',
-    visa: 'Visa',
-    mastercard: 'MasterCard',
-    click: 'Click',
-    payme: 'Payme',
-    uzum: 'Uzum',
-    bank_transfer: 'Перевод'
-  };
+  const paymentMethodLabels = PAYMENT_METHOD_LABELS;
 
   if (isLoading) {
     return (
@@ -306,11 +296,11 @@ const Finance = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Оказано услуг</CardTitle>
+            <CardTitle className="text-sm font-medium">Начислено услуг</CardTitle>
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <CurrencyDisplay amount={stats.totalExpenses} size="lg" />
+            <CurrencyDisplay amount={stats.totalCharges} size="lg" />
             <p className="text-xs text-muted-foreground mt-1">
               стоимость работ
             </p>
@@ -369,7 +359,7 @@ const Finance = () => {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Динамика доходов</CardTitle>
-                <CardDescription>Оплаты vs Оказанные услуги</CardDescription>
+                <CardDescription>Оплаты vs Начисленные услуги</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
@@ -401,12 +391,12 @@ const Finance = () => {
                       />
                       <Area 
                         type="monotone" 
-                        dataKey="expenses" 
+                        dataKey="charges" 
                         stackId="2"
                         stroke="hsl(var(--primary))" 
                         fill="hsl(var(--primary))"
                         fillOpacity={0.3}
-                        name="Услуги"
+                        name="Начисленные услуги"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
