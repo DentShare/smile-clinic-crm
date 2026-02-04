@@ -15,9 +15,11 @@ export interface FinanceSummary {
 export interface LedgerEntry {
   id: string;
   type: 'credit' | 'debit';
+  event_type: 'charge' | 'payment' | 'refund' | 'adjustment' | 'plan_created';
   description: string;
   amount: number;
   date: string;
+  created_at: string;
   balance_after: number;
   is_fiscalized?: boolean;
   fiscal_url?: string;
@@ -54,8 +56,10 @@ export function usePatientFinance(patientId?: string) {
   const { toast } = useToast();
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [financialState, setFinancialState] = useState<FinanceSummary | null>(null);
 
   // Fetch financial summary
   const fetchSummary = useCallback(async (pId?: string) => {
@@ -123,9 +127,11 @@ export function usePatientFinance(patientId?: string) {
         ...payments.map(p => ({
           id: p.id,
           type: 'credit' as const,
+          event_type: 'payment' as const,
           description: `Оплата (${p.payment_method || 'Наличные'})`,
           amount: Number(p.amount),
           date: p.created_at || new Date().toISOString(),
+          created_at: p.created_at || new Date().toISOString(),
           balance_after: 0,
           is_fiscalized: p.is_fiscalized || false,
           fiscal_url: p.fiscal_check_url || undefined,
@@ -134,9 +140,11 @@ export function usePatientFinance(patientId?: string) {
         ...works.map(w => ({
           id: w.id,
           type: 'debit' as const,
+          event_type: 'charge' as const,
           description: (w.service as unknown as { name: string })?.name || 'Услуга',
           amount: -Number(w.total),
           date: w.created_at || new Date().toISOString(),
+          created_at: w.created_at || new Date().toISOString(),
           balance_after: 0,
           tooth_number: w.tooth_number || undefined,
           quantity: w.quantity,
@@ -153,6 +161,7 @@ export function usePatientFinance(patientId?: string) {
       }).reverse();
 
       setLedger(ledgerWithBalance.slice(offset, offset + limit));
+      setLedgerTotal(combined.length);
       return { ledger: ledgerWithBalance, total: combined.length, current_balance: runningBalance };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch ledger';
@@ -292,13 +301,34 @@ export function usePatientFinance(patientId?: string) {
     }
   }, [patientId]);
 
+  // Load more ledger entries
+  const loadMoreLedger = useCallback(async (pId: string, limit: number, offset: number) => {
+    const result = await fetchLedger(pId, limit, offset);
+    if (result) {
+      setLedger(prev => [...prev, ...result.ledger.slice(offset, offset + limit)]);
+    }
+  }, [fetchLedger]);
+
+  // Fetch financial state (alias for fetchSummary)
+  const fetchFinancialState = useCallback(async (pId?: string) => {
+    const result = await fetchSummary(pId);
+    if (result) {
+      setFinancialState(result);
+    }
+    return result;
+  }, [fetchSummary]);
+
   return {
     summary,
     ledger,
+    ledgerTotal,
     loading,
     error,
+    financialState,
     fetchSummary,
     fetchLedger,
+    loadMoreLedger,
+    fetchFinancialState,
     completeServices,
     processPayment,
     calculateBalance,
