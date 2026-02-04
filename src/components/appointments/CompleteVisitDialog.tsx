@@ -400,7 +400,6 @@ export function CompleteVisitDialog({
         patientId={patientId}
         patientName={patientName}
         currentDebt={(summary?.current_debt || 0) + completedAmount}
-        appointmentId={appointmentId}
         onPaymentComplete={handlePaymentComplete}
       />
     </>
