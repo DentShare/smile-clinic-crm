@@ -284,6 +284,48 @@ export function StaffManagement() {
     }
   };
 
+  const handleChangeRole = async (staffMember: StaffMember, newRole: AppRole) => {
+    if (!canManageStaff) return;
+    
+    if (staffMember.user_id === profile?.user_id) {
+      toast.error('Нельзя изменить свою роль');
+      return;
+    }
+
+    if (newRole === 'clinic_admin' && !isClinicAdmin) {
+      toast.error('Только директор может назначать директоров');
+      return;
+    }
+
+    if (!checkLimit(newRole)) {
+      toast.error('Достигнут лимит сотрудников по подписке');
+      return;
+    }
+
+    try {
+      // Delete existing roles for this user
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', staffMember.user_id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new role
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: staffMember.user_id, role: newRole });
+
+      if (insertError) throw insertError;
+
+      toast.success(`Роль изменена на "${roleConfig[newRole].label}"`);
+      fetchStaff();
+    } catch (error) {
+      console.error('Error changing role:', error);
+      toast.error('Ошибка при изменении роли');
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -488,16 +530,41 @@ export function StaffManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {member.roles.map((role) => {
-                              const config = roleConfig[role];
-                              return (
-                                <Badge key={role} className={config.color}>
-                                  {config.label}
-                                </Badge>
-                              );
-                            })}
-                          </div>
+                          {canManageStaff && !isCurrentUser ? (
+                            <Select
+                              value={member.roles[0] || 'doctor'}
+                              onValueChange={(value) => handleChangeRole(member, value as AppRole)}
+                            >
+                              <SelectTrigger className="w-[160px] h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableRoles.map((role) => {
+                                  const config = roleConfig[role];
+                                  const Icon = config.icon;
+                                  return (
+                                    <SelectItem key={role} value={role}>
+                                      <div className="flex items-center gap-2">
+                                        <Icon className="h-4 w-4" />
+                                        {config.label}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {member.roles.map((role) => {
+                                const config = roleConfig[role];
+                                return (
+                                  <Badge key={role} className={config.color}>
+                                    {config.label}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
