@@ -43,6 +43,7 @@ interface SelectedService {
   service_name: string;
   price: number;
   quantity: number;
+  discount_percent: number;
   tooth_number?: number | null;
   fromPlan?: boolean;
   treatment_plan_item_id?: string;
@@ -166,6 +167,7 @@ export function CompleteVisitDialog({
             service_name: service.name,
             price: Number(service.price),
             quantity: 1,
+            discount_percent: 0,
             fromPlan: false
           });
         }
@@ -251,6 +253,7 @@ export function CompleteVisitDialog({
       service_name: service.name,
       price: Number(service.price),
       quantity: 1,
+      discount_percent: 0,
       tooth_number: toothNum,
       fromPlan: false
     }]);
@@ -258,14 +261,24 @@ export function CompleteVisitDialog({
     setSelectedNewToothNumber('');
   };
 
-  const handleUpdateService = (id: string, field: 'price' | 'quantity' | 'tooth_number', value: number | null) => {
+  const handleUpdateService = (id: string, field: 'price' | 'quantity' | 'tooth_number' | 'discount_percent', value: number | null) => {
     setSelectedServices(prev => prev.map(s => {
       if (s.id !== id) return s;
       if (field === 'tooth_number') {
         return { ...s, tooth_number: value };
       }
+      if (field === 'discount_percent') {
+        const discountValue = Math.max(0, Math.min(100, value || 0));
+        return { ...s, discount_percent: discountValue };
+      }
       return { ...s, [field]: value };
     }));
+  };
+
+  const calculateServiceTotal = (service: SelectedService) => {
+    const subtotal = service.price * service.quantity;
+    const discount = subtotal * (service.discount_percent / 100);
+    return subtotal - discount;
   };
 
   const handleToggleEdit = (id: string) => {
@@ -294,6 +307,7 @@ export function CompleteVisitDialog({
         service_name: item.service_name,
         price: item.unit_price,
         quantity: item.quantity,
+        discount_percent: 0,
         tooth_number: item.tooth_number,
         fromPlan: true,
         treatment_plan_item_id: item.id
@@ -302,7 +316,7 @@ export function CompleteVisitDialog({
   };
 
   const getTotal = () => {
-    return selectedServices.reduce((sum, s) => sum + (s.price * s.quantity), 0);
+    return selectedServices.reduce((sum, s) => sum + calculateServiceTotal(s), 0);
   };
 
   const handleComplete = async () => {
@@ -362,8 +376,8 @@ export function CompleteVisitDialog({
           tooth_number: s.tooth_number || null,
           quantity: s.quantity,
           price: s.price,
-          total: s.price * s.quantity,
-          discount_percent: 0
+          total: calculateServiceTotal(s),
+          discount_percent: s.discount_percent
         }));
 
         const { error: insertError } = await supabase
@@ -372,7 +386,7 @@ export function CompleteVisitDialog({
 
         if (insertError) throw insertError;
 
-        const manualTotal = manualServices.reduce((sum, s) => sum + (s.price * s.quantity), 0);
+        const manualTotal = manualServices.reduce((sum, s) => sum + calculateServiceTotal(s), 0);
         totalAmount += manualTotal;
 
         // Update patient balance
@@ -470,8 +484,9 @@ export function CompleteVisitDialog({
                                 <>
                                   <span className="text-xs text-muted-foreground">
                                     {service.quantity} × {service.price.toLocaleString('ru-RU')}
+                                    {service.discount_percent > 0 && ` −${service.discount_percent}%`}
                                   </span>
-                                  <CurrencyDisplay amount={service.price * service.quantity} size="sm" className="font-medium" />
+                                  <CurrencyDisplay amount={calculateServiceTotal(service)} size="sm" className="font-medium" />
                                 </>
                               )}
                               <Button
@@ -494,7 +509,7 @@ export function CompleteVisitDialog({
                           </div>
                           
                           {service.isEditing && (
-                            <div className="grid grid-cols-3 gap-2 pt-1">
+                            <div className="grid grid-cols-4 gap-2 pt-1">
                               <div>
                                 <Label className="text-xs text-muted-foreground">Кол-во</Label>
                                 <Input
@@ -512,6 +527,17 @@ export function CompleteVisitDialog({
                                   min="0"
                                   value={service.price}
                                   onChange={(e) => handleUpdateService(service.id, 'price', parseFloat(e.target.value) || 0)}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Скидка %</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={service.discount_percent}
+                                  onChange={(e) => handleUpdateService(service.id, 'discount_percent', parseInt(e.target.value) || 0)}
                                   className="h-8"
                                 />
                               </div>
