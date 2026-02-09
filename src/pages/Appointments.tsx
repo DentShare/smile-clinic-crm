@@ -13,8 +13,10 @@ import { ru } from 'date-fns/locale';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid';
 import { WeeklyScheduleGrid } from '@/components/schedule/WeeklyScheduleGrid';
+import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
 import { useClinicWorkingHoursRange } from '@/hooks/use-working-hours';
+import { useStaffScope } from '@/hooks/use-staff-scope';
 
 const SLOT_HEIGHT = 60;
 
@@ -22,6 +24,7 @@ type ViewMode = 'day' | 'week';
 
 const Appointments = () => {
   const { clinic } = useAuth();
+  const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
   const [appointments, setAppointments] = useState<(Appointment & { patient: Patient; doctor: Profile })[]>([]);
   const [doctors, setDoctors] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +54,7 @@ const Appointments = () => {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('appointments')
       .select(`
         *,
@@ -62,6 +65,17 @@ const Appointments = () => {
       .gte('start_time', startDate.toISOString())
       .lte('start_time', endDate.toISOString())
       .order('start_time', { ascending: true });
+
+    // Apply doctor scope filter
+    if (effectiveDoctorIds !== null && effectiveDoctorIds.length > 0) {
+      query = query.in('doctor_id', effectiveDoctorIds);
+    } else if (effectiveDoctorIds !== null && effectiveDoctorIds.length === 0) {
+      setAppointments([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching appointments:', error);
@@ -86,9 +100,11 @@ const Appointments = () => {
   };
 
   useEffect(() => {
-    fetchAppointments();
-    fetchDoctors();
-  }, [clinic?.id, selectedDate, viewMode]);
+    if (!scopeLoading) {
+      fetchAppointments();
+      fetchDoctors();
+    }
+  }, [clinic?.id, selectedDate, viewMode, effectiveDoctorIds, scopeLoading]);
 
   // Enable appointment notifications
   useAppointmentNotifications({
@@ -197,6 +213,16 @@ const Appointments = () => {
             </Button>
           </div>
         </div>
+        {/* Doctor filter tabs (for admin/director) */}
+        {hasFullAccess && allStaff.length > 0 && (
+          <div className="shrink-0">
+            <DoctorFilterTabs
+              doctors={allStaff}
+              selectedDoctorId={selectedDoctorId}
+              onSelect={setSelectedDoctorId}
+            />
+          </div>
+        )}
 
         {/* Calendar Grid */}
         <Card className="flex-1 min-h-0 overflow-hidden">
