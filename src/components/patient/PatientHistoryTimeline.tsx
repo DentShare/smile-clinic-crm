@@ -266,52 +266,84 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
 }
 
 function VisitItem({ visit }: { visit: Visit }) {
+  const [expanded, setExpanded] = useState(false);
   const totalCost = visit.performed_works?.reduce((sum, pw) => sum + Number(pw.total), 0) || 0;
+  const hasWorks = visit.performed_works && visit.performed_works.length > 0;
 
   return (
-    <div className="flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-lg transition-colors cursor-pointer">
-      <div className="p-1.5 rounded-full shrink-0 bg-primary/10 text-primary">
-        <Calendar className="h-3 w-3" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium truncate">
-            Визит {format(new Date(visit.start_time), 'd MMM yyyy', { locale: ru })}
-          </p>
-          <Badge 
-            variant={visit.status === 'completed' ? 'default' : 'secondary'}
-            className="text-xs shrink-0"
-          >
-            {visit.status === 'completed' ? 'Завершён' : 
-             visit.status === 'cancelled' ? 'Отменён' : 'Не явился'}
-          </Badge>
+    <div className="rounded-lg transition-colors">
+      <div 
+        className={`flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-lg cursor-pointer ${expanded ? 'bg-muted/30' : ''}`}
+        onClick={() => hasWorks && setExpanded(!expanded)}
+      >
+        <div className="p-1.5 rounded-full shrink-0 bg-primary/10 text-primary">
+          <Calendar className="h-3 w-3" />
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-          <Clock className="h-3 w-3" />
-          {format(new Date(visit.start_time), 'HH:mm')} - {format(new Date(visit.end_time), 'HH:mm')}
-          {visit.doctor && (
-            <>
-              <span>•</span>
-              <User className="h-3 w-3" />
-              {visit.doctor.full_name}
-            </>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium truncate">
+              Визит {format(new Date(visit.start_time), 'd MMM yyyy', { locale: ru })}
+            </p>
+            <Badge 
+              variant={visit.status === 'completed' ? 'default' : 'secondary'}
+              className="text-xs shrink-0"
+            >
+              {visit.status === 'completed' ? 'Завершён' : 
+               visit.status === 'cancelled' ? 'Отменён' : 'Не явился'}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+            <Clock className="h-3 w-3" />
+            {format(new Date(visit.start_time), 'HH:mm')} - {format(new Date(visit.end_time), 'HH:mm')}
+            {visit.doctor && (
+              <>
+                <span>•</span>
+                <User className="h-3 w-3" />
+                {visit.doctor.full_name}
+              </>
+            )}
+          </div>
+          {hasWorks && (
+            <div className="mt-1 text-xs">
+              <span className="text-muted-foreground">Услуги: </span>
+              <span className="font-medium">
+                {visit.performed_works.length} на {formatCurrency(totalCost)}
+              </span>
+            </div>
+          )}
+          {visit.diagnosis && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              Диагноз: {visit.diagnosis}
+            </p>
           )}
         </div>
-        {visit.performed_works && visit.performed_works.length > 0 && (
-          <div className="mt-1 text-xs">
-            <span className="text-muted-foreground">Услуги: </span>
-            <span className="font-medium">
-              {visit.performed_works.length} на {formatCurrency(totalCost)}
-            </span>
-          </div>
-        )}
-        {visit.diagnosis && (
-          <p className="text-xs text-muted-foreground mt-1 truncate">
-            Диагноз: {visit.diagnosis}
-          </p>
+        {hasWorks && (
+          <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 self-center transition-transform ${expanded ? 'rotate-90' : ''}`} />
         )}
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center" />
+      
+      {/* Expanded services list */}
+      {expanded && hasWorks && (
+        <div className="ml-8 mt-1 mb-2 space-y-1 border-l-2 border-muted pl-3">
+          {visit.performed_works.map((work) => (
+            <div key={work.id} className="flex items-center justify-between text-xs py-1">
+              <div className="flex items-center gap-2 min-w-0">
+                {work.tooth_number && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                    №{work.tooth_number}
+                  </Badge>
+                )}
+                <span className="truncate text-muted-foreground">
+                  {work.service?.name || 'Услуга'}
+                </span>
+              </div>
+              <span className="font-medium shrink-0 ml-2">
+                {formatCurrency(work.total)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
