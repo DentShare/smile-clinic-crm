@@ -58,7 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (clinicData) {
-            // Map the raw data to our Clinic type
             const mappedClinic: Clinic = {
               ...clinicData,
               is_active: clinicData.is_active ?? true,
@@ -84,16 +83,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     // IMPORTANT: subscribe FIRST, then read the existing session.
-    // Also: keep the auth callback synchronous to avoid deadlocks.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
         // Defer any Supabase reads to the next tick.
         setTimeout(() => {
-          fetchUserData(session.user.id);
+          if (isMounted) {
+            fetchUserData(session.user.id);
+          }
         }, 0);
       } else {
         setProfile(null);
@@ -102,20 +105,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Get initial session
+    // Get initial session — keep isLoading true until fetchUserData finishes
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
+        if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          fetchUserData(session.user.id);
+          await fetchUserData(session.user.id);
         }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
