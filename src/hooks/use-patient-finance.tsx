@@ -245,7 +245,7 @@ export function usePatientFinance(patientId?: string) {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('clinic_id')
+        .select('id, clinic_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -259,7 +259,7 @@ export function usePatientFinance(patientId?: string) {
         p_appointment_id: options?.appointmentId || null,
         p_fiscal_check_url: options?.fiscalCheckUrl || null,
         p_notes: options?.notes || null,
-        p_received_by: user.id
+        p_received_by: profile.id
       });
 
       if (rpcError) throw rpcError;
