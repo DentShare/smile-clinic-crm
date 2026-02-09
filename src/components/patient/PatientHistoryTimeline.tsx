@@ -167,12 +167,12 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
   }
 
   const allItems = [
-    ...visits.map(v => ({ 
+    ...visits.filter(v => v && v.start_time).map(v => ({ 
       type: 'visit' as const, 
       date: new Date(v.start_time), 
       data: v 
     })),
-    ...payments.map(p => ({ 
+    ...payments.filter(p => p && p.created_at).map(p => ({ 
       type: 'payment' as const, 
       date: new Date(p.created_at), 
       data: p 
@@ -345,7 +345,9 @@ function PaymentItem({ payment, onRefund }: { payment: Payment; onRefund: () => 
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
           <Clock className="h-3 w-3" />
-          {format(new Date(payment.created_at), 'd MMM yyyy, HH:mm', { locale: ru })}
+          {payment.created_at 
+            ? format(new Date(payment.created_at), 'd MMM yyyy, HH:mm', { locale: ru })
+            : '—'}
           <span>•</span>
           {PAYMENT_METHOD_LABELS[payment.payment_method || 'cash'] || payment.payment_method}
         </div>

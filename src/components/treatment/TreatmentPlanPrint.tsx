@@ -84,7 +84,9 @@ const TreatmentPlanPrint = forwardRef<HTMLDivElement, TreatmentPlanPrintProps>(
             )}
             <div>
               <span className="font-semibold">Дата составления:</span>{' '}
-              {format(new Date(plan.created_at), 'dd.MM.yyyy', { locale: ru })}
+              {plan.created_at 
+                ? format(new Date(plan.created_at), 'dd.MM.yyyy', { locale: ru })
+                : format(new Date(), 'dd.MM.yyyy', { locale: ru })}
             </div>
           </div>
         </div>

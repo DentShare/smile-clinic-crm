@@ -125,7 +125,9 @@ const ToothStatusHistory = ({ patientId, selectedTooth }: ToothStatusHistoryProp
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                {format(new Date(entry.created_at), 'dd MMM yyyy, HH:mm', { locale: ru })}
+                {entry.created_at 
+                  ? format(new Date(entry.created_at), 'dd MMM yyyy, HH:mm', { locale: ru })
+                  : '—'}
               </p>
             </div>
           </div>
