@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Loader2, Clock } from 'lucide-react';
+import { Building2, Users, CreditCard, Loader2, Clock, FileText } from 'lucide-react';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { StaffManagement } from '@/components/settings/StaffManagement';
+import { DocumentTemplatesSettings } from '@/components/settings/DocumentTemplatesSettings';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -71,6 +72,10 @@ const Settings = () => {
           <TabsTrigger value="team">
             <Users className="mr-2 h-4 w-4" />
             Команда
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            <FileText className="mr-2 h-4 w-4" />
+            Документы
           </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="mr-2 h-4 w-4" />
@@ -134,6 +139,10 @@ const Settings = () => {
 
         <TabsContent value="team" className="mt-6">
           <StaffManagement />
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-6">
+          <DocumentTemplatesSettings />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6">
