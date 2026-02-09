@@ -2,13 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ToothStatus } from '@/types/database';
-import Tooth from './Tooth';
+import AnatomicalTooth from './AnatomicalTooth';
 import ToothStatusLegend from './ToothStatusLegend';
 import ToothStatusEditor from './ToothStatusEditor';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
 interface ToothChartProps {
   patientId: string;
   readOnly?: boolean;
@@ -220,11 +219,11 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
     teeth: { number: number; isDeciduous: boolean }[],
     label: string
   ) => (
-    <div className="flex items-center gap-1">
-      <span className="text-xs text-muted-foreground w-8 text-center">{label}</span>
-      <div className="flex gap-1">
+    <div className="flex items-center gap-0.5">
+      <span className="text-[10px] text-muted-foreground w-6 text-center font-medium">{label}</span>
+      <div className="flex gap-0">
         {teeth.map(({ number, isDeciduous }) => (
-          <Tooth
+          <AnatomicalTooth
             key={number}
             number={number}
             status={getToothStatus(number)}
@@ -291,12 +290,12 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
       </div>
 
       {/* Upper jaw */}
-      <div className="space-y-2">
-        <div className="text-sm font-medium text-center text-muted-foreground mb-2">
+      <div className="space-y-1">
+        <div className="text-xs font-medium text-center text-muted-foreground">
           Верхняя челюсть
         </div>
         <div className="flex justify-center">
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             {renderToothRow(upperRightTeeth, 'ПВ')}
             <div className="w-px bg-border" />
             {renderToothRow(upperLeftTeeth, 'ЛВ')}
@@ -305,18 +304,18 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
       </div>
 
       {/* Divider */}
-      <div className="border-t border-dashed" />
+      <div className="border-t border-dashed my-2" />
 
       {/* Lower jaw */}
-      <div className="space-y-2">
+      <div className="space-y-1">
         <div className="flex justify-center">
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             {renderToothRow(lowerRightTeeth, 'ПН')}
             <div className="w-px bg-border" />
             {renderToothRow(lowerLeftTeeth, 'ЛН')}
           </div>
         </div>
-        <div className="text-sm font-medium text-center text-muted-foreground mt-2">
+        <div className="text-xs font-medium text-center text-muted-foreground">
           Нижняя челюсть
         </div>
       </div>
