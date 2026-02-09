@@ -37,6 +37,7 @@ interface Visit {
     total: number;
     service: { name: string } | null;
     tooth_number: number | null;
+    treatment_plan_item: { service_name: string } | null;
   }[];
 }
 
@@ -85,7 +86,8 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
               id,
               total,
               tooth_number,
-              service:service_id (name)
+              service:service_id (name),
+              treatment_plan_item:treatment_plan_item_id (service_name)
             )
           `)
           .eq('patient_id', patientId)
@@ -334,7 +336,7 @@ function VisitItem({ visit }: { visit: Visit }) {
                   </Badge>
                 )}
                 <span className="truncate text-muted-foreground">
-                  {work.service?.name || 'Услуга'}
+                  {work.service?.name || work.treatment_plan_item?.service_name || 'Услуга'}
                 </span>
               </div>
               <span className="font-medium shrink-0 ml-2">
