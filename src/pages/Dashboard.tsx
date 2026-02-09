@@ -9,7 +9,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
 import { DashboardTimeGrid } from '@/components/schedule/DashboardTimeGrid';
+import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
 import { useWorkingHours } from '@/hooks/use-working-hours';
+import { useStaffScope } from '@/hooks/use-staff-scope';
 import { 
   Users, 
   Calendar as CalendarIcon, 
@@ -32,6 +34,7 @@ import { useAppointmentNotifications } from '@/hooks/use-appointment-notificatio
 
 const Dashboard = () => {
   const { clinic, profile, isSuperAdmin } = useAuth();
+  const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<(Appointment & { patient: Patient; doctor?: Profile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +56,7 @@ const Dashboard = () => {
     const startDate = startOfDay(selectedDate);
     const endDate = endOfDay(selectedDate);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('appointments')
       .select(`
         *,
@@ -64,6 +67,18 @@ const Dashboard = () => {
       .gte('start_time', startDate.toISOString())
       .lte('start_time', endDate.toISOString())
       .order('start_time', { ascending: true });
+
+    // Scope by doctor if needed
+    if (effectiveDoctorIds !== null && effectiveDoctorIds.length > 0) {
+      query = query.in('doctor_id', effectiveDoctorIds);
+    } else if (effectiveDoctorIds !== null && effectiveDoctorIds.length === 0) {
+      // No access to any doctors
+      setAppointments([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching appointments:', error);
@@ -81,20 +96,28 @@ const Dashboard = () => {
     const endDate = endOfDay(today);
 
     // Fetch patient count
-    const { count: patientsCount } = await supabase
+    let patientsQuery = supabase
       .from('patients')
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinic.id);
 
-    // Fetch today's appointments count
-    const { count: appointmentsCount } = await supabase
+    const { count: patientsCount } = await patientsQuery;
+
+    // Fetch today's appointments count (scoped)
+    let apptQuery = supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinic.id)
       .gte('start_time', startDate.toISOString())
       .lte('start_time', endDate.toISOString());
 
-    // Fetch today's payments
+    if (effectiveDoctorIds !== null && effectiveDoctorIds.length > 0) {
+      apptQuery = apptQuery.in('doctor_id', effectiveDoctorIds);
+    }
+
+    const { count: appointmentsCount } = await apptQuery;
+
+    // Fetch today's payments (scoped via appointments if needed)
     const { data: payments } = await supabase
       .from('payments')
       .select('amount')
@@ -122,9 +145,11 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchAppointments();
-    fetchStats();
-  }, [clinic?.id, selectedDate]);
+    if (!scopeLoading) {
+      fetchAppointments();
+      fetchStats();
+    }
+  }, [clinic?.id, selectedDate, effectiveDoctorIds, scopeLoading]);
 
 
   // Enable appointment notifications
@@ -206,6 +231,17 @@ const Dashboard = () => {
           Новая запись
         </Button>
       </div>
+
+      {/* Doctor filter tabs (only for admin/director) */}
+      {hasFullAccess && allStaff.length > 0 && (
+        <div className="shrink-0">
+          <DoctorFilterTabs
+            doctors={allStaff}
+            selectedDoctorId={selectedDoctorId}
+            onSelect={setSelectedDoctorId}
+          />
+        </div>
+      )}
 
       {/* Main Layout: 3-column grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">

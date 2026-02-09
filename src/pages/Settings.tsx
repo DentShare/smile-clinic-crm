@@ -11,6 +11,7 @@ import { Building2, Users, CreditCard, Loader2, Clock, FileText } from 'lucide-r
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { DocumentTemplatesSettings } from '@/components/settings/DocumentTemplatesSettings';
+import { AssistantDoctorLinks } from '@/components/settings/AssistantDoctorLinks';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -137,8 +138,9 @@ const Settings = () => {
           <WorkScheduleSettings />
         </TabsContent>
 
-        <TabsContent value="team" className="mt-6">
+        <TabsContent value="team" className="mt-6 space-y-6">
           <StaffManagement />
+          <AssistantDoctorLinks />
         </TabsContent>
 
         <TabsContent value="documents" className="mt-6">
