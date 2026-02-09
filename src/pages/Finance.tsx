@@ -43,6 +43,8 @@ import { ru } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
+import { useStaffScope } from '@/hooks/use-staff-scope';
+import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
 
 interface IncomeData {
   date: string;
@@ -70,6 +72,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 const Finance = () => {
   const { clinic } = useAuth();
+  const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | '3months'>('month');
   
@@ -87,10 +90,10 @@ const Finance = () => {
   });
 
   useEffect(() => {
-    if (clinic?.id) {
+    if (clinic?.id && !scopeLoading) {
       fetchAllData();
     }
-  }, [clinic?.id, period]);
+  }, [clinic?.id, period, effectiveDoctorIds, scopeLoading]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -113,23 +116,51 @@ const Finance = () => {
     try {
       const { start, end } = getDateRange();
 
-      // Fetch payments
-      const { data: paymentsData } = await supabase
-        .from('payments')
-        .select('id, amount, payment_method, created_at')
+      // Fetch performed works (expenses) - can filter by doctor_id directly
+      let worksQuery = supabase
+        .from('performed_works')
+        .select('id, total, created_at, doctor_id')
         .eq('clinic_id', clinic.id)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
         .order('created_at', { ascending: true });
 
-      // Fetch performed works (expenses)
-      const { data: worksData } = await supabase
-        .from('performed_works')
-        .select('id, total, created_at')
+      if (effectiveDoctorIds !== null && effectiveDoctorIds.length > 0) {
+        worksQuery = worksQuery.in('doctor_id', effectiveDoctorIds);
+      } else if (effectiveDoctorIds !== null && effectiveDoctorIds.length === 0) {
+        worksQuery = worksQuery.in('doctor_id', ['__none__']); // no results
+      }
+
+      const { data: worksData } = await worksQuery;
+
+      // Get patient IDs scoped to this doctor via performed_works
+      const scopedPatientIds = new Set<string>();
+      if (effectiveDoctorIds !== null) {
+        // Get patients from appointments of scoped doctors
+        const { data: scopedAppts } = await supabase
+          .from('appointments')
+          .select('patient_id')
+          .eq('clinic_id', clinic.id)
+          .in('doctor_id', effectiveDoctorIds.length > 0 ? effectiveDoctorIds : ['__none__']);
+        scopedAppts?.forEach(a => scopedPatientIds.add(a.patient_id));
+      }
+
+      // Fetch payments - filter by scoped patients if doctor-scoped
+      let paymentsQuery = supabase
+        .from('payments')
+        .select('id, amount, payment_method, created_at, patient_id')
         .eq('clinic_id', clinic.id)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
         .order('created_at', { ascending: true });
+
+      if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
+        paymentsQuery = paymentsQuery.in('patient_id', Array.from(scopedPatientIds));
+      } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
+        paymentsQuery = paymentsQuery.in('patient_id', ['__none__']);
+      }
+
+      const { data: paymentsData } = await paymentsQuery;
 
       // Process income by day
       const days = eachDayOfInterval({ start, end });
@@ -175,14 +206,22 @@ const Finance = () => {
         ...data
       }));
 
-      // Fetch debtors (patients with negative balance)
-      const { data: debtorsData } = await supabase
+      // Fetch debtors (patients with negative balance) - scoped to doctor's patients
+      let debtorsQuery = supabase
         .from('patients')
         .select('id, full_name, phone, balance')
         .eq('clinic_id', clinic.id)
         .lt('balance', 0)
         .order('balance', { ascending: true })
         .limit(50);
+
+      if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
+        debtorsQuery = debtorsQuery.in('id', Array.from(scopedPatientIds));
+      } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
+        debtorsQuery = debtorsQuery.in('id', ['__none__']);
+      }
+
+      const { data: debtorsData } = await debtorsQuery;
 
       const totalDebt = debtorsData?.reduce((sum, d) => sum + Math.abs(Number(d.balance)), 0) || 0;
 
@@ -202,11 +241,11 @@ const Finance = () => {
         paymentMethodStats
       });
 
-      // Fetch forecast from treatment plans
-      const { data: plansData } = await supabase
+      // Fetch forecast from treatment plans - scoped to doctor's patients
+      let plansQuery = supabase
         .from('treatment_plans')
         .select(`
-          id, total_price, status,
+          id, total_price, status, patient_id,
           stages:treatment_plan_stages(
             id, estimated_price, status,
             items:treatment_plan_items(id, service_name, total_price, is_completed)
@@ -214,6 +253,14 @@ const Finance = () => {
         `)
         .eq('clinic_id', clinic.id)
         .in('status', ['draft', 'active']);
+
+      if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
+        plansQuery = plansQuery.in('patient_id', Array.from(scopedPatientIds));
+      } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
+        plansQuery = plansQuery.in('patient_id', ['__none__']);
+      }
+
+      const { data: plansData } = await plansQuery;
 
       // Calculate forecast
       let plannedTotal = 0;
@@ -279,6 +326,15 @@ const Finance = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Doctor filter tabs (for admin/director) */}
+      {hasFullAccess && allStaff.length > 0 && (
+        <DoctorFilterTabs
+          doctors={allStaff}
+          selectedDoctorId={selectedDoctorId}
+          onSelect={setSelectedDoctorId}
+        />
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

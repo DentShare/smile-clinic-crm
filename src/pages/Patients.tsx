@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffScope } from '@/hooks/use-staff-scope';
+import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,6 +29,7 @@ import type { Patient } from '@/types/database';
 const Patients = () => {
   const navigate = useNavigate();
   const { clinic } = useAuth();
+  const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,24 +45,64 @@ const Patients = () => {
   const fetchPatients = async () => {
     if (!clinic?.id) return;
 
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('clinic_id', clinic.id)
-      .order('created_at', { ascending: false });
+    // If scoped to specific doctors, first get their patient IDs from appointments
+    if (effectiveDoctorIds !== null) {
+      if (effectiveDoctorIds.length === 0) {
+        setPatients([]);
+        setIsLoading(false);
+        return;
+      }
 
-    if (error) {
-      toast.error('Ошибка загрузки пациентов');
-      console.error(error);
+      const { data: apptData } = await supabase
+        .from('appointments')
+        .select('patient_id')
+        .eq('clinic_id', clinic.id)
+        .in('doctor_id', effectiveDoctorIds);
+
+      const patientIds = [...new Set((apptData || []).map(a => a.patient_id))];
+
+      if (patientIds.length === 0) {
+        setPatients([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .in('id', patientIds)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast.error('Ошибка загрузки пациентов');
+        console.error(error);
+      } else {
+        setPatients(data as Patient[]);
+      }
     } else {
-      setPatients(data as Patient[]);
+      // Full access - show all
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast.error('Ошибка загрузки пациентов');
+        console.error(error);
+      } else {
+        setPatients(data as Patient[]);
+      }
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchPatients();
-  }, [clinic?.id]);
+    if (!scopeLoading) {
+      fetchPatients();
+    }
+  }, [clinic?.id, effectiveDoctorIds, scopeLoading]);
 
   const handleCreatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +141,15 @@ const Patients = () => {
           <h1 className="text-3xl font-bold">Пациенты</h1>
           <p className="text-muted-foreground">Управление базой пациентов</p>
         </div>
+
+        {/* Doctor filter tabs (for admin/director) */}
+        {hasFullAccess && allStaff.length > 0 && (
+          <DoctorFilterTabs
+            doctors={allStaff}
+            selectedDoctorId={selectedDoctorId}
+            onSelect={setSelectedDoctorId}
+          />
+        )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
