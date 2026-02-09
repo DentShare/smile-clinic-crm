@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, FilePlus, FileCheck } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Documents = () => {
   return (
@@ -12,7 +12,7 @@ const Documents = () => {
           <p className="text-muted-foreground">Договоры, согласия и акты</p>
         </div>
 
-        <Button>
+        <Button onClick={() => toast.info('Откройте карточку пациента, чтобы создать документ')}>
           <FilePlus className="mr-2 h-4 w-4" />
           Создать документ
         </Button>
