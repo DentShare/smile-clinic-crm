@@ -1529,6 +1529,18 @@ export type Database = {
         }
         Returns: Json
       }
+      process_patient_refund: {
+        Args: {
+          p_amount: number
+          p_clinic_id: string
+          p_patient_id: string
+          p_payment_id: string
+          p_reason?: string
+          p_refund_method?: string
+          p_refunded_by?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:

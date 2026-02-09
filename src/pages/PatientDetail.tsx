@@ -4,8 +4,6 @@ import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
@@ -13,23 +11,20 @@ import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   Phone, 
-  Calendar, 
   FileText, 
   CreditCard,
   MessageCircle,
   Plus,
   Printer,
-  Send,
-  Clock,
-  Activity,
-  ChevronRight
+  Send
 } from 'lucide-react';
 import ToothChart from '@/components/dental/ToothChart';
-import ToothStatusHistory from '@/components/dental/ToothStatusHistory';
 import TreatmentPlanCard from '@/components/treatment/TreatmentPlanCard';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { PatientFinanceSummary } from '@/components/finance/PatientFinanceSummary';
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
+import { PatientUpcomingVisits } from '@/components/patient/PatientUpcomingVisits';
+import { PatientHistoryTimeline } from '@/components/patient/PatientHistoryTimeline';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
 import { formatPhone } from '@/lib/formatters';
@@ -233,45 +228,15 @@ const PatientDetail = () => {
             readOnly={!canEditToothChart} 
           />
 
-          {/* Timeline - Scrollable */}
-          <Card className="flex-1 min-h-0 flex flex-col">
-            <CardHeader className="py-3 px-4 shrink-0">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                История лечения
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 min-h-0">
-              <ScrollArea className="h-full max-h-[300px]">
-                <div className="p-4 space-y-3">
-                  {/* Timeline items - Mixed visits, payments, x-rays */}
-                  <TimelineItem 
-                    type="visit"
-                    date="21.01.2026"
-                    title="Консультация"
-                    description="Первичный осмотр, составлен план лечения"
-                    doctor="Dr. Иванов"
-                  />
-                  <TimelineItem 
-                    type="payment"
-                    date="21.01.2026"
-                    title="Оплата"
-                    description="Консультация"
-                    amount={150000}
-                  />
-                  <TimelineItem 
-                    type="history"
-                    date="21.01.2026"
-                    title="Изменение статуса зуба #16"
-                    description="Здоров → Кариес"
-                  />
-                  
-                  {/* Tooth Status History */}
-                  <ToothStatusHistory patientId={patient.id} />
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          {/* History Timeline - Real data */}
+          <PatientHistoryTimeline 
+            patientId={patient.id}
+            patientName={patient.full_name}
+            onRefresh={() => {
+              fetchPatient();
+              setFinanceRefreshKey(prev => prev + 1);
+            }}
+          />
         </div>
 
         {/* RIGHT COLUMN - Quick Actions */}
@@ -332,20 +297,11 @@ const PatientDetail = () => {
             key={financeRefreshKey}
           />
 
-          {/* Upcoming Appointments */}
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Предстоящие визиты
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="text-sm text-muted-foreground text-center py-4">
-                Нет запланированных визитов
-              </div>
-            </CardContent>
-          </Card>
+          {/* Upcoming Appointments - Real data */}
+          <PatientUpcomingVisits 
+            patientId={patient.id}
+            onCreateVisit={() => setIsNewVisitOpen(true)}
+          />
 
           {/* Debts */}
           {patient.balance < 0 && (
@@ -409,56 +365,6 @@ const PatientDetail = () => {
           setFinanceRefreshKey(prev => prev + 1);
         }}
       />
-    </div>
-  );
-};
-
-// Timeline item component
-interface TimelineItemProps {
-  type: 'visit' | 'payment' | 'xray' | 'history';
-  date: string;
-  title: string;
-  description?: string;
-  doctor?: string;
-  amount?: number;
-}
-
-const TimelineItem = ({ type, date, title, description, doctor, amount }: TimelineItemProps) => {
-  const icons = {
-    visit: <Calendar className="h-3 w-3" />,
-    payment: <CreditCard className="h-3 w-3" />,
-    xray: <FileText className="h-3 w-3" />,
-    history: <Clock className="h-3 w-3" />,
-  };
-
-  const colors = {
-    visit: 'bg-primary/10 text-primary',
-    payment: 'bg-success/10 text-success',
-    xray: 'bg-info/10 text-info',
-    history: 'bg-muted text-muted-foreground',
-  };
-
-  return (
-    <div className="flex gap-3 group cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
-      <div className={`p-1.5 rounded-full shrink-0 ${colors[type]}`}>
-        {icons[type]}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium truncate">{title}</p>
-          <span className="text-xs text-muted-foreground shrink-0">{date}</span>
-        </div>
-        {description && (
-          <p className="text-xs text-muted-foreground truncate">{description}</p>
-        )}
-        {doctor && (
-          <p className="text-xs text-muted-foreground">{doctor}</p>
-        )}
-        {amount !== undefined && (
-          <CurrencyDisplay amount={amount} size="sm" className="text-success" />
-        )}
-      </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center" />
     </div>
   );
 };
