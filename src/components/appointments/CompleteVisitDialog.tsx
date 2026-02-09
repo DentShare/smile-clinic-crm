@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
@@ -29,7 +30,9 @@ import {
   Plus,
   ChevronDown,
   X,
-  ClipboardList
+  ClipboardList,
+  Pencil,
+  Check
 } from 'lucide-react';
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import type { Service } from '@/types/database';
@@ -43,6 +46,7 @@ interface SelectedService {
   tooth_number?: number | null;
   fromPlan?: boolean;
   treatment_plan_item_id?: string;
+  isEditing?: boolean;
 }
 
 interface TreatmentPlanItem {
@@ -108,6 +112,19 @@ export function CompleteVisitDialog({
 
   // Additional service selection
   const [selectedNewService, setSelectedNewService] = useState('');
+  const [selectedNewToothNumber, setSelectedNewToothNumber] = useState<string>('');
+
+  // Tooth numbers for selection
+  const toothNumbers = [
+    // Upper right (18-11)
+    18, 17, 16, 15, 14, 13, 12, 11,
+    // Upper left (21-28)
+    21, 22, 23, 24, 25, 26, 27, 28,
+    // Lower left (38-31)
+    38, 37, 36, 35, 34, 33, 32, 31,
+    // Lower right (41-48)
+    41, 42, 43, 44, 45, 46, 47, 48
+  ];
 
   useEffect(() => {
     if (open && patientId && clinic) {
@@ -226,11 +243,7 @@ export function CompleteVisitDialog({
     const service = services.find(s => s.id === selectedNewService);
     if (!service) return;
 
-    // Check if already added
-    if (selectedServices.some(s => s.service_id === service.id && !s.fromPlan)) {
-      toast.error('Услуга уже добавлена');
-      return;
-    }
+    const toothNum = selectedNewToothNumber ? parseInt(selectedNewToothNumber) : null;
 
     setSelectedServices(prev => [...prev, {
       id: `manual-${service.id}-${Date.now()}`,
@@ -238,9 +251,27 @@ export function CompleteVisitDialog({
       service_name: service.name,
       price: Number(service.price),
       quantity: 1,
+      tooth_number: toothNum,
       fromPlan: false
     }]);
     setSelectedNewService('');
+    setSelectedNewToothNumber('');
+  };
+
+  const handleUpdateService = (id: string, field: 'price' | 'quantity' | 'tooth_number', value: number | null) => {
+    setSelectedServices(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      if (field === 'tooth_number') {
+        return { ...s, tooth_number: value };
+      }
+      return { ...s, [field]: value };
+    }));
+  };
+
+  const handleToggleEdit = (id: string) => {
+    setSelectedServices(prev => prev.map(s => 
+      s.id === id ? { ...s, isEditing: !s.isEditing } : s
+    ));
   };
 
   const handleRemoveService = (id: string) => {
@@ -419,31 +450,90 @@ export function CompleteVisitDialog({
                       {selectedServices.map((service) => (
                         <div 
                           key={service.id} 
-                          className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
+                          className="p-2 bg-muted/50 rounded-lg space-y-2"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                            <div className="min-w-0">
-                              <span className="text-sm truncate block">{service.service_name}</span>
-                              {service.tooth_number && (
-                                <span className="text-xs text-muted-foreground">зуб {service.tooth_number}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-sm truncate block">{service.service_name}</span>
+                                {!service.isEditing && service.tooth_number && (
+                                  <span className="text-xs text-muted-foreground">зуб {service.tooth_number}</span>
+                                )}
+                                {service.fromPlan && (
+                                  <Badge variant="outline" className="ml-1 text-xs">Из плана</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {!service.isEditing && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">
+                                    {service.quantity} × {service.price.toLocaleString('ru-RU')}
+                                  </span>
+                                  <CurrencyDisplay amount={service.price * service.quantity} size="sm" className="font-medium" />
+                                </>
                               )}
-                              {service.fromPlan && (
-                                <Badge variant="outline" className="ml-1 text-xs">Из плана</Badge>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleToggleEdit(service.id)}
+                              >
+                                {service.isEditing ? <Check className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleRemoveService(service.id)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <CurrencyDisplay amount={service.price * service.quantity} size="sm" />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleRemoveService(service.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          
+                          {service.isEditing && (
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Кол-во</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={service.quantity}
+                                  onChange={(e) => handleUpdateService(service.id, 'quantity', parseInt(e.target.value) || 1)}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Цена</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={service.price}
+                                  onChange={(e) => handleUpdateService(service.id, 'price', parseFloat(e.target.value) || 0)}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-muted-foreground">Зуб</Label>
+                                <Select 
+                                  value={service.tooth_number?.toString() || ''} 
+                                  onValueChange={(v) => handleUpdateService(service.id, 'tooth_number', v ? parseInt(v) : null)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="—" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">—</SelectItem>
+                                    {toothNumbers.map(num => (
+                                      <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -468,6 +558,17 @@ export function CompleteVisitDialog({
                               </span>
                             </div>
                           </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedNewToothNumber} onValueChange={setSelectedNewToothNumber}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue placeholder="Зуб" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">—</SelectItem>
+                        {toothNumbers.map(num => (
+                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
