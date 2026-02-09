@@ -154,6 +154,9 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
       const endTime = new Date(startTime);
       endTime.setMinutes(endTime.getMinutes() + duration);
 
+      // Find service_id if a service was selected
+      const selectedServiceObj = services.find(s => s.name === selectedService);
+      
       const { error } = await supabase.from('appointments').insert({
         clinic_id: clinic.id,
         patient_id: selectedPatient.id,
@@ -161,7 +164,8 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         status: 'scheduled',
-        complaints: notes || selectedService,
+        complaints: notes || null,
+        service_id: selectedServiceObj?.id || null,
       });
 
       if (error) throw error;
