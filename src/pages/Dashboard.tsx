@@ -95,13 +95,32 @@ const Dashboard = () => {
     const startDate = startOfDay(today);
     const endDate = endOfDay(today);
 
-    // Fetch patient count
-    let patientsQuery = supabase
-      .from('patients')
-      .select('*', { count: 'exact', head: true })
-      .eq('clinic_id', clinic.id);
+    // If scoped, get the doctor's patient IDs first
+    let scopedPatientIds: string[] | null = null;
+    if (effectiveDoctorIds !== null) {
+      if (effectiveDoctorIds.length === 0) {
+        setStats({ totalPatients: 0, todayAppointments: 0, todayRevenue: 0, pendingPayments: 0 });
+        return;
+      }
+      const { data: scopedAppts } = await supabase
+        .from('appointments')
+        .select('patient_id')
+        .eq('clinic_id', clinic.id)
+        .in('doctor_id', effectiveDoctorIds);
+      scopedPatientIds = [...new Set((scopedAppts || []).map(a => a.patient_id))];
+    }
 
-    const { count: patientsCount } = await patientsQuery;
+    // Fetch patient count (scoped)
+    let patientsCount = 0;
+    if (scopedPatientIds !== null) {
+      patientsCount = scopedPatientIds.length;
+    } else {
+      const { count } = await supabase
+        .from('patients')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinic.id);
+      patientsCount = count || 0;
+    }
 
     // Fetch today's appointments count (scoped)
     let apptQuery = supabase
@@ -117,27 +136,41 @@ const Dashboard = () => {
 
     const { count: appointmentsCount } = await apptQuery;
 
-    // Fetch today's payments (scoped via appointments if needed)
-    const { data: payments } = await supabase
+    // Fetch today's payments (scoped by patient)
+    let paymentsQuery = supabase
       .from('payments')
       .select('amount')
       .eq('clinic_id', clinic.id)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
+    if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
+      paymentsQuery = paymentsQuery.in('patient_id', scopedPatientIds);
+    } else if (scopedPatientIds !== null) {
+      paymentsQuery = paymentsQuery.in('patient_id', ['__none__']);
+    }
+
+    const { data: payments } = await paymentsQuery;
     const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
-    // Fetch pending payments (negative balances)
-    const { data: debtPatients } = await supabase
+    // Fetch pending payments / debts (scoped)
+    let debtQuery = supabase
       .from('patients')
       .select('balance')
       .eq('clinic_id', clinic.id)
       .lt('balance', 0);
 
+    if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
+      debtQuery = debtQuery.in('id', scopedPatientIds);
+    } else if (scopedPatientIds !== null) {
+      debtQuery = debtQuery.in('id', ['__none__']);
+    }
+
+    const { data: debtPatients } = await debtQuery;
     const pendingPayments = debtPatients?.reduce((sum, p) => sum + Math.abs(p.balance || 0), 0) || 0;
 
     setStats({
-      totalPatients: patientsCount || 0,
+      totalPatients: patientsCount,
       todayAppointments: appointmentsCount || 0,
       todayRevenue: totalRevenue,
       pendingPayments,
