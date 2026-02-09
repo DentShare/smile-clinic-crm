@@ -35,7 +35,8 @@ import {
   Check
 } from 'lucide-react';
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
-import type { Service } from '@/types/database';
+import { CategoryGroupedServiceSelect } from '@/components/services/CategoryGroupedServiceSelect';
+import type { Service, ServiceCategory } from '@/types/database';
 
 interface SelectedService {
   id: string; // unique key for UI
@@ -101,6 +102,7 @@ export function CompleteVisitDialog({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [notes, setNotes] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -184,14 +186,22 @@ export function CompleteVisitDialog({
   const fetchServices = async () => {
     if (!clinic) return;
 
-    const { data } = await supabase
-      .from('services')
-      .select('*')
-      .eq('clinic_id', clinic.id)
-      .eq('is_active', true)
-      .order('name');
+    const [servicesRes, categoriesRes] = await Promise.all([
+      supabase
+        .from('services')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .eq('is_active', true)
+        .order('name'),
+      supabase
+        .from('service_categories')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .order('sort_order'),
+    ]);
 
-    if (data) setServices(data as Service[]);
+    if (servicesRes.data) setServices(servicesRes.data as Service[]);
+    if (categoriesRes.data) setCategories(categoriesRes.data as ServiceCategory[]);
   };
 
   const fetchPlans = async () => {
@@ -570,23 +580,15 @@ export function CompleteVisitDialog({
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Добавить услугу</Label>
                   <div className="flex gap-2">
-                    <Select value={selectedNewService} onValueChange={setSelectedNewService}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Выберите услугу..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service.id} value={service.id}>
-                            <div className="flex justify-between items-center gap-4">
-                              <span>{service.name}</span>
-                              <span className="text-muted-foreground text-xs">
-                                {Number(service.price).toLocaleString('ru-RU')} сум
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CategoryGroupedServiceSelect
+                      services={services}
+                      categories={categories}
+                      value={selectedNewService}
+                      onValueChange={setSelectedNewService}
+                      placeholder="Выберите услугу..."
+                      className="flex-1"
+                      showPrice={true}
+                    />
                     <Select value={selectedNewToothNumber} onValueChange={setSelectedNewToothNumber}>
                       <SelectTrigger className="w-20">
                         <SelectValue placeholder="Зуб" />
