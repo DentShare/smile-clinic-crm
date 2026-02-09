@@ -14,7 +14,8 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { UserPlus, Users, Stethoscope, UserCog, HeartHandshake, Loader2, Phone, Clock, Send, Copy, Trash2, Mail, Pencil } from 'lucide-react';
+import { UserPlus, Users, Stethoscope, UserCog, HeartHandshake, Loader2, Phone, Clock, Send, Copy, Trash2, Mail, Pencil, Shield, Info } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StaffProfileEditor } from './StaffProfileEditor';
 import type { Profile } from '@/types/database';
 
@@ -41,11 +42,27 @@ interface Invitation {
   token: string;
 }
 
-const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string }> = {
-  clinic_admin: { label: 'Директор', icon: UserCog, color: 'bg-primary text-primary-foreground' },
-  reception: { label: 'Администратор', icon: Users, color: 'bg-info text-info-foreground' },
-  doctor: { label: 'Врач', icon: Stethoscope, color: 'bg-success text-success-foreground' },
-  nurse: { label: 'Ассистент', icon: HeartHandshake, color: 'bg-warning text-warning-foreground' },
+const roleConfig: Record<AppRole, { label: string; icon: React.ElementType; color: string; description: string; permissions: string[] }> = {
+  clinic_admin: { 
+    label: 'Директор', icon: UserCog, color: 'bg-primary text-primary-foreground',
+    description: 'Полный доступ ко всем функциям клиники',
+    permissions: ['Управление сотрудниками и ролями', 'Финансы и аналитика', 'Настройки клиники', 'Пациенты, расписание, услуги', 'Документы, склад, планы лечения']
+  },
+  reception: { 
+    label: 'Администратор', icon: Users, color: 'bg-info text-info-foreground',
+    description: 'Управление пациентами и расписанием',
+    permissions: ['Пациенты (CRUD)', 'Расписание и записи', 'Приём платежей', 'Склад и услуги', 'Приглашение врачей и ассистентов']
+  },
+  doctor: { 
+    label: 'Врач', icon: Stethoscope, color: 'bg-success text-success-foreground',
+    description: 'Клиническая работа с пациентами',
+    permissions: ['Просмотр пациентов и записей', 'Планы лечения (создание/редактирование)', 'Зубная формула', 'Выполненные работы', 'Создание записей на приём']
+  },
+  nurse: { 
+    label: 'Ассистент', icon: HeartHandshake, color: 'bg-warning text-warning-foreground',
+    description: 'Помощь врачу, просмотр данных',
+    permissions: ['Просмотр пациентов', 'Просмотр расписания', 'Просмотр услуг и склада', 'Без права редактирования']
+  },
 };
 
 export function StaffManagement() {
@@ -402,6 +419,51 @@ export function StaffManagement() {
         </div>
       )}
 
+      {/* Role Permissions Reference */}
+      {canManageStaff && (
+        <Collapsible>
+          <Card>
+            <CardHeader className="pb-3">
+              <CollapsibleTrigger className="flex items-center justify-between w-full">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Справка по ролям и правам доступа
+                </CardTitle>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {(Object.entries(roleConfig) as [AppRole, typeof roleConfig[AppRole]][]).map(([role, config]) => {
+                    const Icon = config.icon;
+                    return (
+                      <div key={role} className="space-y-2 p-3 rounded-lg border">
+                        <div className="flex items-center gap-2">
+                          <Badge className={config.color}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{config.description}</p>
+                        <ul className="space-y-1">
+                          {config.permissions.map((perm, i) => (
+                            <li key={i} className="text-xs flex items-start gap-1.5">
+                              <span className="text-primary mt-0.5">•</span>
+                              {perm}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
       {/* Staff & Invitations */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -546,7 +608,10 @@ export function StaffManagement() {
                                     <SelectItem key={role} value={role}>
                                       <div className="flex items-center gap-2">
                                         <Icon className="h-4 w-4" />
-                                        {config.label}
+                                        <div>
+                                          <span>{config.label}</span>
+                                          <span className="ml-2 text-xs text-muted-foreground">{config.description}</span>
+                                        </div>
                                       </div>
                                     </SelectItem>
                                   );
