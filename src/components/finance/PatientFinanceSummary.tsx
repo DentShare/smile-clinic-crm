@@ -91,7 +91,7 @@ export function PatientFinanceSummary({
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-3">
       {/* Current Balance */}
       <Card className={hasDebt ? 'border-destructive/50' : hasAdvance ? 'border-emerald-500/50' : ''}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
