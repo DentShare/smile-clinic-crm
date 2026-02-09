@@ -25,6 +25,7 @@ import { PatientFinanceSummary } from '@/components/finance/PatientFinanceSummar
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import { PatientUpcomingVisits } from '@/components/patient/PatientUpcomingVisits';
 import { PatientHistoryTimeline } from '@/components/patient/PatientHistoryTimeline';
+import { PatientDocumentsCard } from '@/components/documents/PatientDocumentsCard';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
 import { formatPhone } from '@/lib/formatters';
@@ -325,23 +326,12 @@ const PatientDetail = () => {
             </Card>
           )}
 
-          {/* Documents */}
-          <Card>
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Документы
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-2">
-              <DocumentLink title="Согласие на лечение" date="21.01.2026" />
-              <DocumentLink title="Договор" date="21.01.2026" />
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground">
-                <Plus className="h-4 w-4" />
-                Добавить документ
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Documents - Dynamic from database */}
+          <PatientDocumentsCard 
+            patientId={patient.id}
+            patientName={patient.full_name}
+            clinicId={clinic?.id || ''}
+          />
         </div>
       </div>
 
@@ -368,16 +358,5 @@ const PatientDetail = () => {
     </div>
   );
 };
-
-// Document link component
-const DocumentLink = ({ title, date }: { title: string; date: string }) => (
-  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
-    <div className="flex items-center gap-2 min-w-0">
-      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-      <span className="text-sm truncate">{title}</span>
-    </div>
-    <span className="text-xs text-muted-foreground shrink-0">{date}</span>
-  </div>
-);
 
 export default PatientDetail;
