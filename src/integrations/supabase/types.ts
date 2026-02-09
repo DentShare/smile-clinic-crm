@@ -26,6 +26,7 @@ export type Database = {
           end_time: string
           id: string
           patient_id: string
+          service_id: string | null
           start_time: string
           status: string | null
           updated_at: string | null
@@ -41,6 +42,7 @@ export type Database = {
           end_time: string
           id?: string
           patient_id: string
+          service_id?: string | null
           start_time: string
           status?: string | null
           updated_at?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           end_time?: string
           id?: string
           patient_id?: string
+          service_id?: string | null
           start_time?: string
           status?: string | null
           updated_at?: string | null
@@ -87,6 +90,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
