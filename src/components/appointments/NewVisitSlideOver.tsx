@@ -34,7 +34,8 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatPhone } from '@/lib/formatters';
-import type { Patient, Profile, Service } from '@/types/database';
+import type { Patient, Profile, Service, ServiceCategory } from '@/types/database';
+import { CategoryGroupedServiceSelect } from '@/components/services/CategoryGroupedServiceSelect';
 
 interface NewVisitSlideOverProps {
   open: boolean;
@@ -70,6 +71,7 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Profile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   
   const [patientSearch, setPatientSearch] = useState(preSelectedPatientName || '');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
@@ -111,15 +113,17 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
     setIsLoading(true);
 
     try {
-      const [patientsRes, doctorsRes, servicesRes] = await Promise.all([
+      const [patientsRes, doctorsRes, servicesRes, categoriesRes] = await Promise.all([
         supabase.from('patients').select('*').eq('clinic_id', clinic.id).order('full_name'),
         supabase.from('profiles').select('*').eq('clinic_id', clinic.id).not('specialization', 'is', null),
         supabase.from('services').select('*').eq('clinic_id', clinic.id).eq('is_active', true),
+        supabase.from('service_categories').select('*').eq('clinic_id', clinic.id).order('sort_order'),
       ]);
 
       if (patientsRes.data) setPatients(patientsRes.data as Patient[]);
       if (doctorsRes.data) setDoctors(doctorsRes.data as Profile[]);
       if (servicesRes.data) setServices(servicesRes.data as Service[]);
+      if (categoriesRes.data) setCategories(categoriesRes.data as ServiceCategory[]);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -132,10 +136,13 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
     p.phone.includes(patientSearch)
   ).slice(0, 10);
 
-  const handleServiceSelect = (serviceName: string) => {
-    setSelectedService(serviceName);
-    const defaultDuration = serviceDurations[serviceName] || 30;
-    setDuration(defaultDuration);
+  const handleServiceSelect = (serviceId: string) => {
+    setSelectedService(serviceId);
+    // Find service and use its duration or fallback to defaults
+    const service = services.find(s => s.id === serviceId);
+    if (service) {
+      setDuration(service.duration_minutes || serviceDurations[service.name] || 30);
+    }
   };
 
   const handleSubmit = async () => {
@@ -154,9 +161,7 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
       const endTime = new Date(startTime);
       endTime.setMinutes(endTime.getMinutes() + duration);
 
-      // Find service_id if a service was selected
-      const selectedServiceObj = services.find(s => s.name === selectedService);
-      
+      // Service ID is already stored as ID now
       const { error } = await supabase.from('appointments').insert({
         clinic_id: clinic.id,
         patient_id: selectedPatient.id,
@@ -165,7 +170,7 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
         end_time: endTime.toISOString(),
         status: 'scheduled',
         complaints: notes || null,
-        service_id: selectedServiceObj?.id || null,
+        service_id: selectedService || null,
       });
 
       if (error) throw error;
@@ -377,42 +382,34 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
                 <div className="space-y-2">
                   <Label>Услуга</Label>
                   
-                  {/* Favorites */}
+                  {/* Quick favorites - map to service IDs */}
                   <div className="flex flex-wrap gap-2">
-                    {favoriteServices.map((service) => (
-                      <Button
-                        key={service}
-                        variant={selectedService === service ? "default" : "outline"}
-                        size="sm"
-                        className="gap-1"
-                        onClick={() => handleServiceSelect(service)}
-                      >
-                        <Star className="h-3 w-3" />
-                        {service}
-                      </Button>
-                    ))}
+                    {services
+                      .filter(s => favoriteServices.includes(s.name))
+                      .slice(0, 3)
+                      .map((service) => (
+                        <Button
+                          key={service.id}
+                          variant={selectedService === service.id ? "default" : "outline"}
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => handleServiceSelect(service.id)}
+                        >
+                          <Star className="h-3 w-3" />
+                          {service.name}
+                        </Button>
+                      ))}
                   </div>
 
-                  {/* Full service list */}
-                  <Select value={selectedService} onValueChange={handleServiceSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите услугу" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={service.name}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                      {Object.keys(serviceDurations).map((name) => (
-                        !services.find(s => s.name === name) && (
-                          <SelectItem key={name} value={name}>
-                            {name}
-                          </SelectItem>
-                        )
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Grouped service list */}
+                  <CategoryGroupedServiceSelect
+                    services={services}
+                    categories={categories}
+                    value={selectedService}
+                    onValueChange={handleServiceSelect}
+                    placeholder="Выберите услугу"
+                    showPrice={true}
+                  />
                 </div>
 
                 <Separator />
