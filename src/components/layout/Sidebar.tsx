@@ -30,12 +30,12 @@ const clinicNavItems: NavItem[] = [
   { title: 'Дашборд', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Пациенты', href: '/patients', icon: Users },
   { title: 'Расписание', href: '/appointments', icon: Calendar },
-  { title: 'Зубная формула', href: '/tooth-chart', icon: Smile },
-  { title: 'Услуги', href: '/services', icon: Stethoscope },
-  { title: 'Склад', href: '/inventory', icon: Package },
-  { title: 'Финансы', href: '/finance', icon: CreditCard },
-  { title: 'Документы', href: '/documents', icon: FileText },
-  { title: 'Аналитика', href: '/analytics', icon: BarChart3 },
+  { title: 'Зубная формула', href: '/tooth-chart', icon: Smile, roles: ['clinic_admin', 'doctor'] },
+  { title: 'Услуги', href: '/services', icon: Stethoscope, roles: ['clinic_admin', 'reception'] },
+  { title: 'Склад', href: '/inventory', icon: Package, roles: ['clinic_admin', 'reception'] },
+  { title: 'Финансы', href: '/finance', icon: CreditCard, roles: ['clinic_admin', 'reception'] },
+  { title: 'Документы', href: '/documents', icon: FileText, roles: ['clinic_admin', 'reception'] },
+  { title: 'Аналитика', href: '/analytics', icon: BarChart3, roles: ['clinic_admin'] },
   { title: 'Настройки', href: '/settings', icon: Settings, roles: ['clinic_admin'] },
 ];
 

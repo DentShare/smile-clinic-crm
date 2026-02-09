@@ -56,14 +56,30 @@ const App = () => (
                 <Route path="/patients" element={<Patients />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/appointments" element={<Appointments />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/payments" element={<Payments />} />
-                <Route path="/finance" element={<Finance />} />
-                <Route path="/documents" element={<Documents />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/tooth-chart" element={<ToothChartDemo />} />
+                <Route path="/tooth-chart" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'doctor']}><ToothChartDemo /></ProtectedRoute>
+                } />
+                <Route path="/services" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Services /></ProtectedRoute>
+                } />
+                <Route path="/inventory" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Inventory /></ProtectedRoute>
+                } />
+                <Route path="/payments" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Payments /></ProtectedRoute>
+                } />
+                <Route path="/finance" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Finance /></ProtectedRoute>
+                } />
+                <Route path="/documents" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Documents /></ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin']}><Analytics /></ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin']}><Settings /></ProtectedRoute>
+                } />
               </Route>
 
               {/* Super Admin Routes - Separate Portal */}
