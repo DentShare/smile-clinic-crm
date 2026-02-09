@@ -338,6 +338,52 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_assistants: {
+        Row: {
+          assistant_id: string
+          clinic_id: string
+          created_at: string
+          doctor_id: string
+          id: string
+        }
+        Insert: {
+          assistant_id: string
+          clinic_id: string
+          created_at?: string
+          doctor_id: string
+          id?: string
+        }
+        Update: {
+          assistant_id?: string
+          clinic_id?: string
+          created_at?: string
+          doctor_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_assistants_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_assistants_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_assistants_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctor_schedules: {
         Row: {
           clinic_id: string
