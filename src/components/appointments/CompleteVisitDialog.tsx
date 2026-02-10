@@ -554,14 +554,14 @@ export function CompleteVisitDialog({
                               <div>
                                 <Label className="text-xs text-muted-foreground">Зуб</Label>
                                 <Select 
-                                  value={service.tooth_number?.toString() || ''} 
-                                  onValueChange={(v) => handleUpdateService(service.id, 'tooth_number', v ? parseInt(v) : null)}
+                                  value={service.tooth_number?.toString() || 'none'} 
+                                  onValueChange={(v) => handleUpdateService(service.id, 'tooth_number', v === 'none' ? null : parseInt(v))}
                                 >
                                   <SelectTrigger className="h-8">
                                     <SelectValue placeholder="—" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">—</SelectItem>
+                                    <SelectItem value="none">—</SelectItem>
                                     {toothNumbers.map(num => (
                                       <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
                                     ))}
@@ -594,7 +594,7 @@ export function CompleteVisitDialog({
                         <SelectValue placeholder="Зуб" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">—</SelectItem>
+                        <SelectItem value="none">—</SelectItem>
                         {toothNumbers.map(num => (
                           <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
                         ))}
