@@ -55,13 +55,13 @@ const AdminClinics = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Клиники</h1>
-          <p className="text-slate-400">Управление зарегистрированными клиниками</p>
+          <h1 className="text-2xl font-bold text-foreground">Клиники</h1>
+          <p className="text-muted-foreground">Управление зарегистрированными клиниками</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            className="gap-2 border-slate-600 text-slate-300"
+            className="gap-2"
             onClick={() => exportClinics(clinics)}
           >
             <Download className="h-4 w-4" />
@@ -69,7 +69,7 @@ const AdminClinics = () => {
           </Button>
           <Button
             variant="outline"
-            className="gap-2 border-slate-600 text-slate-300"
+            className="gap-2"
             onClick={() => refresh()}
           >
             <RefreshCw className="h-4 w-4" />
