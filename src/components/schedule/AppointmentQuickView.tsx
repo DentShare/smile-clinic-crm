@@ -25,6 +25,7 @@ import {
   Loader2,
   ExternalLink,
   CheckCircle2,
+  UserCheck,
 } from 'lucide-react';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { cn } from '@/lib/utils';
@@ -201,6 +202,32 @@ export function AppointmentQuickView({
               </Button>
             )}
           </div>
+
+          {appointment.status === 'scheduled' || appointment.status === 'confirmed' ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-full gap-1.5"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from('appointments')
+                    .update({ status: 'in_progress' })
+                    .eq('id', appointment.id);
+                  if (error) throw error;
+                  toast.success('Пациент пришёл, приём начат');
+                  onStatusChange?.();
+                  setIsOpen(false);
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Ошибка при обновлении статуса');
+                }
+              }}
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              Пришёл
+            </Button>
+          ) : null}
 
           {canComplete && (
             <Button

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
 import { Clock, DollarSign, UserCheck, CalendarClock, GripVertical, CheckCircle2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/clientRuntime';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { CompleteVisitDialog } from '@/components/appointments/CompleteVisitDialog';
@@ -148,6 +150,31 @@ export function DraggableAppointment({
 
           {/* Quick Actions */}
           <div className="flex gap-1 pt-2 border-t">
+            {(appointment.status === 'scheduled' || appointment.status === 'confirmed') && (
+              <Button 
+                size="sm" 
+                variant="secondary"
+                className="flex-1 h-7 text-xs gap-1"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    const { error } = await supabase
+                      .from('appointments')
+                      .update({ status: 'in_progress' })
+                      .eq('id', appointment.id);
+                    if (error) throw error;
+                    toast.success('Пациент пришёл');
+                    onStatusChange?.();
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Ошибка');
+                  }
+                }}
+              >
+                <UserCheck className="h-3 w-3" />
+                Пришёл
+              </Button>
+            )}
             {canComplete && (
               <Button 
                 size="sm" 
@@ -161,18 +188,6 @@ export function DraggableAppointment({
                 Завершить
               </Button>
             )}
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="flex-1 h-7 text-xs gap-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                console.log('Payment:', appointment.id);
-              }}
-            >
-              <DollarSign className="h-3 w-3" />
-              Оплата
-            </Button>
           </div>
         </div>
       </TooltipContent>
