@@ -344,8 +344,10 @@ export type Database = {
       chat_conversations: {
         Row: {
           assigned_to: string | null
+          channel: string
           clinic_id: string
           created_at: string
+          external_chat_id: string | null
           id: string
           last_message_at: string | null
           status: string
@@ -356,8 +358,10 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          channel?: string
           clinic_id: string
           created_at?: string
+          external_chat_id?: string | null
           id?: string
           last_message_at?: string | null
           status?: string
@@ -368,8 +372,10 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          channel?: string
           clinic_id?: string
           created_at?: string
+          external_chat_id?: string | null
           id?: string
           last_message_at?: string | null
           status?: string
@@ -397,6 +403,7 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          channel: string
           content: string
           conversation_id: string
           created_at: string
@@ -406,6 +413,7 @@ export type Database = {
           sender_type: string
         }
         Insert: {
+          channel?: string
           content: string
           conversation_id: string
           created_at?: string
@@ -415,6 +423,7 @@ export type Database = {
           sender_type: string
         }
         Update: {
+          channel?: string
           content?: string
           conversation_id?: string
           created_at?: string
