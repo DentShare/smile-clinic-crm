@@ -13,7 +13,12 @@ import {
   Settings,
   Building2,
   LogOut,
-  Smile
+  Smile,
+  Calculator,
+  Clock,
+  Send,
+  Gift,
+  ShoppingBag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,10 +35,15 @@ const clinicNavItems: NavItem[] = [
   { title: 'Дашборд', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Пациенты', href: '/patients', icon: Users },
   { title: 'Расписание', href: '/appointments', icon: Calendar },
+  { title: 'Лист ожидания', href: '/waiting-list', icon: Clock, roles: ['clinic_admin', 'reception', 'doctor'] },
   { title: 'Зубная формула', href: '/tooth-chart', icon: Smile, roles: ['clinic_admin', 'doctor'] },
   { title: 'Услуги', href: '/services', icon: Stethoscope, roles: ['clinic_admin', 'reception'] },
+  { title: 'Абонементы', href: '/packages', icon: ShoppingBag, roles: ['clinic_admin', 'reception'] },
   { title: 'Склад', href: '/inventory', icon: Package, roles: ['clinic_admin', 'reception'] },
   { title: 'Финансы', href: '/finance', icon: CreditCard, roles: ['clinic_admin', 'reception'] },
+  { title: 'Расчёт ЗП', href: '/salary', icon: Calculator, roles: ['clinic_admin', 'doctor'] },
+  { title: 'Лояльность', href: '/loyalty', icon: Gift, roles: ['clinic_admin', 'reception'] },
+  { title: 'Рассылки', href: '/campaigns', icon: Send, roles: ['clinic_admin', 'reception'] },
   { title: 'Документы', href: '/documents', icon: FileText, roles: ['clinic_admin', 'reception'] },
   { title: 'Аналитика', href: '/analytics', icon: BarChart3, roles: ['clinic_admin'] },
   { title: 'Настройки', href: '/settings', icon: Settings, roles: ['clinic_admin'] },

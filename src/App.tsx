@@ -27,6 +27,11 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import ToothChartDemo from "./pages/ToothChartDemo";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import Salary from "./pages/Salary";
+import WaitingList from "./pages/WaitingList";
+import BulkCampaigns from "./pages/BulkCampaigns";
+import Loyalty from "./pages/Loyalty";
+import Packages from "./pages/Packages";
 import NotFound from "./pages/NotFound";
 
 // Admin Pages
@@ -76,6 +81,21 @@ const App = () => (
                 } />
                 <Route path="/analytics" element={
                   <ProtectedRoute requiredRoles={['clinic_admin']}><Analytics /></ProtectedRoute>
+                } />
+                <Route path="/salary" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'doctor']}><Salary /></ProtectedRoute>
+                } />
+                <Route path="/waiting-list" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception', 'doctor']}><WaitingList /></ProtectedRoute>
+                } />
+                <Route path="/campaigns" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><BulkCampaigns /></ProtectedRoute>
+                } />
+                <Route path="/loyalty" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Loyalty /></ProtectedRoute>
+                } />
+                <Route path="/packages" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Packages /></ProtectedRoute>
                 } />
                 <Route path="/settings" element={
                   <ProtectedRoute requiredRoles={['clinic_admin']}><Settings /></ProtectedRoute>
