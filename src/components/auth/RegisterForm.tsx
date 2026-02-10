@@ -82,7 +82,7 @@ export const RegisterForm = () => {
         .from('subscription_plans')
         .select('id')
         .eq('name', 'Starter')
-        .single();
+        .maybeSingle();
 
       if (starterPlan) {
         const trialEndsAt = new Date();
