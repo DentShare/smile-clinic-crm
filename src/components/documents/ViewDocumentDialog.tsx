@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { SignDocumentDialog } from './SignDocumentDialog';
+import { supabase } from '@/integrations/supabase/clientRuntime';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
@@ -36,6 +38,8 @@ interface Document {
   signature_data?: string | null;
   signed_ip?: string | null;
   signed_device?: string | null;
+  patient_id?: string;
+  created_by?: string | null;
 }
 
 interface ViewDocumentDialogProps {
@@ -59,28 +63,113 @@ export function ViewDocumentDialog({
   document,
   onDocumentUpdated
 }: ViewDocumentDialogProps) {
+  const { clinic } = useAuth();
   const [isSignDialogOpen, setIsSignDialogOpen] = useState(false);
+  const [patientName, setPatientName] = useState('');
+  const [doctorName, setDoctorName] = useState('');
+
+  useEffect(() => {
+    if (open && document) {
+      fetchDocumentMeta();
+    }
+  }, [open, document]);
+
+  const fetchDocumentMeta = async () => {
+    // Fetch patient name
+    if (document.patient_id) {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('full_name')
+        .eq('id', document.patient_id)
+        .single();
+      if (patient) setPatientName(patient.full_name);
+    }
+    // Fetch doctor/creator name
+    if (document.created_by) {
+      const { data: creator } = await supabase
+        .from('profiles')
+        .select('full_name, specialization')
+        .eq('id', document.created_by)
+        .single();
+      if (creator) setDoctorName(creator.full_name + (creator.specialization ? `, ${creator.specialization}` : ''));
+    }
+  };
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const clinicName = clinic?.name || '';
+      const clinicAddress = clinic?.address || '';
+      const clinicPhone = clinic?.phone || '';
+      const createdDate = format(new Date(document.created_at), 'd MMMM yyyy г.', { locale: ru });
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>${document.title}</title>
             <style>
+              @page { margin: 20mm; }
               body { 
-                font-family: Arial, sans-serif; 
-                padding: 40px; 
+                font-family: 'Times New Roman', Times, serif; 
+                padding: 0; 
+                margin: 0;
                 line-height: 1.6;
+                color: #1a1a1a;
+                font-size: 14px;
               }
-              h1 { 
-                font-size: 18px; 
-                margin-bottom: 20px; 
+              .header {
+                text-align: center;
+                border-bottom: 2px solid #1a1a1a;
+                padding-bottom: 16px;
+                margin-bottom: 24px;
+              }
+              .header .clinic-name {
+                font-size: 20px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 4px;
+              }
+              .header .clinic-info {
+                font-size: 12px;
+                color: #444;
+              }
+              .meta-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                font-size: 12px;
+                color: #666;
+              }
+              .doc-title {
+                text-align: center;
+                font-size: 18px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin: 24px 0;
+                letter-spacing: 0.5px;
+              }
+              .info-block {
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 12px 16px;
+                margin-bottom: 20px;
+                font-size: 13px;
+              }
+              .info-block .row {
+                display: flex;
+                gap: 24px;
+                margin-bottom: 4px;
+              }
+              .info-block .label {
+                font-weight: bold;
+                min-width: 120px;
               }
               .content {
                 white-space: pre-wrap;
+                font-size: 14px;
+                line-height: 1.8;
               }
               .signature-section {
                 margin-top: 60px;
@@ -88,29 +177,92 @@ export function ViewDocumentDialog({
                 padding-top: 20px;
               }
               .signature-image {
-                max-width: 300px;
+                max-width: 250px;
                 margin: 10px 0;
               }
               .signature-meta {
+                font-size: 11px;
+                color: #666;
+              }
+              .signatures-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+                margin-top: 60px;
+              }
+              .sig-line {
+                border-bottom: 1px solid #1a1a1a;
+                height: 50px;
+                margin-bottom: 4px;
+              }
+              .sig-label {
                 font-size: 12px;
                 color: #666;
+              }
+              .footer {
+                margin-top: 40px;
+                text-align: center;
+                font-size: 10px;
+                color: #999;
+                border-top: 1px solid #ddd;
+                padding-top: 8px;
               }
             </style>
           </head>
           <body>
-            <h1>${document.title}</h1>
+            <div class="header">
+              <div class="clinic-name">${clinicName}</div>
+              ${clinicAddress ? `<div class="clinic-info">${clinicAddress}</div>` : ''}
+              ${clinicPhone ? `<div class="clinic-info">Тел: ${clinicPhone}</div>` : ''}
+            </div>
+
+            <div class="meta-row">
+              <span>${createdDate}</span>
+              <span>${documentTypeLabels[document.type || ''] || 'Документ'}</span>
+            </div>
+
+            <div class="doc-title">${document.title}</div>
+
+            <div class="info-block">
+              <div class="row">
+                <span class="label">Пациент:</span>
+                <span>${patientName || '—'}</span>
+              </div>
+              ${doctorName ? `<div class="row"><span class="label">Лечащий врач:</span><span>${doctorName}</span></div>` : ''}
+              <div class="row">
+                <span class="label">Дата:</span>
+                <span>${createdDate}</span>
+              </div>
+            </div>
+
             <div class="content">${document.content || ''}</div>
+            
             ${document.status === 'signed' ? `
               <div class="signature-section">
                 <p><strong>Документ подписан электронной подписью</strong></p>
                 ${document.signature_data ? `<img src="${document.signature_data}" class="signature-image" alt="Подпись" />` : ''}
                 <div class="signature-meta">
-                  <p>Дата и время: ${document.signed_at ? format(new Date(document.signed_at), 'd MMMM yyyy, HH:mm:ss', { locale: ru }) : ''}</p>
-                  <p>IP-адрес: ${document.signed_ip || 'Не указан'}</p>
-                  <p>Устройство: ${document.signed_device ? (document.signed_device.includes('Mobile') ? 'Мобильное устройство' : 'Компьютер') : 'Не указано'}</p>
+                  <p>Дата: ${document.signed_at ? format(new Date(document.signed_at), 'd MMMM yyyy, HH:mm:ss', { locale: ru }) : ''}</p>
+                  <p>IP: ${document.signed_ip || '—'}</p>
+                  <p>Устройство: ${document.signed_device ? (document.signed_device.includes('Mobile') ? 'Мобильное' : 'ПК') : '—'}</p>
                 </div>
               </div>
-            ` : ''}
+            ` : `
+              <div class="signatures-grid">
+                <div>
+                  <div class="sig-line"></div>
+                  <div class="sig-label">Врач: ________________________</div>
+                </div>
+                <div>
+                  <div class="sig-line"></div>
+                  <div class="sig-label">Пациент: ________________________</div>
+                </div>
+              </div>
+            `}
+
+            <div class="footer">
+              Документ сформирован ${clinicName} • ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: ru })}
+            </div>
           </body>
         </html>
       `);
@@ -184,7 +336,6 @@ export function ViewDocumentDialog({
                   <span className="font-medium text-success">Документ подписан</span>
                 </div>
                 
-                {/* Signature image */}
                 {document.signature_data && (
                   <div className="mb-3 p-2 bg-white rounded border">
                     <img 
@@ -195,7 +346,6 @@ export function ViewDocumentDialog({
                   </div>
                 )}
 
-                {/* Signing metadata */}
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -247,7 +397,6 @@ export function ViewDocumentDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Signing dialog */}
       <SignDocumentDialog
         open={isSignDialogOpen}
         onOpenChange={setIsSignDialogOpen}

@@ -29,6 +29,8 @@ interface Document {
   signature_data: string | null;
   signed_ip: string | null;
   signed_device: string | null;
+  patient_id: string;
+  created_by: string | null;
 }
 
 interface PatientDocumentsCardProps {
@@ -66,7 +68,7 @@ export function PatientDocumentsCard({ patientId, patientName, clinicId }: Patie
     try {
       const { data, error } = await supabase
         .from('documents')
-        .select('id, title, type, status, signed_at, created_at, content, file_url, signature_data, signed_ip, signed_device')
+        .select('id, title, type, status, signed_at, created_at, content, file_url, signature_data, signed_ip, signed_device, patient_id, created_by')
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false })
         .limit(10);
