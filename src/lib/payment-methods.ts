@@ -13,7 +13,9 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   payme: 'Payme',
   uzum: 'Uzum',
   bank_transfer: 'Перевод',
-  transfer: 'Перевод'
+  transfer: 'Перевод',
+  bonus: 'Бонусы',
+  deposit: 'Депозит',
 } as const;
 
 export function getPaymentMethodLabel(method: string): string {
