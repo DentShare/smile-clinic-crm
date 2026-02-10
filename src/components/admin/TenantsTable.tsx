@@ -140,6 +140,7 @@ export function TenantsTable({
             <TableRow className="bg-muted/50">
               <TableHead className="w-[250px]">Клиника</TableHead>
               <TableHead>Владелец</TableHead>
+              <TableHead>Страна</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Тариф</TableHead>
               <TableHead>Оплачено до</TableHead>
@@ -150,7 +151,7 @@ export function TenantsTable({
           <TableBody>
             {filteredClinics.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Клиники не найдены
                 </TableCell>
               </TableRow>
@@ -209,6 +210,15 @@ export function TenantsTable({
                           </div>
                         )}
                       </div>
+                    </TableCell>
+
+                    {/* Country */}
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {(clinic as any).country === 'KZ' ? '🇰🇿 KZ' :
+                         (clinic as any).country === 'KG' ? '🇰🇬 KG' :
+                         '🇺🇿 UZ'}
+                      </Badge>
                     </TableCell>
 
                     {/* Status */}

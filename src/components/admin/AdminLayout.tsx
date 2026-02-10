@@ -10,7 +10,8 @@ import {
   LogOut,
   Shield,
   AlertTriangle,
-  Settings
+  Settings,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,6 +37,7 @@ export const AdminLayout = () => {
     { title: 'Дашборд', href: '/admin/dashboard', icon: LayoutDashboard },
     { title: 'Клиники', href: '/admin/clinics', icon: Building2 },
     { title: 'Подписки', href: '/admin/subscriptions', icon: CreditCard },
+    { title: 'Состояние системы', href: '/admin/system-health', icon: Activity },
     { title: 'Аналитика', href: '/admin/analytics', icon: BarChart3 },
     { title: 'Алерты', href: '/admin/alerts', icon: Bell, badge: criticalAlerts },
     { title: 'Настройки', href: '/admin/settings', icon: Settings },

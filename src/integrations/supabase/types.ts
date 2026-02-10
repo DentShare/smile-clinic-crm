@@ -506,6 +506,7 @@ export type Database = {
           acquisition_source: string | null
           address: string | null
           admin_notes: string | null
+          country: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -524,6 +525,7 @@ export type Database = {
           acquisition_source?: string | null
           address?: string | null
           admin_notes?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -542,6 +544,7 @@ export type Database = {
           acquisition_source?: string | null
           address?: string | null
           admin_notes?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -2160,6 +2163,44 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      system_logs: {
+        Row: {
+          clinic_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          level: string
+          message: string
+          source: string | null
+        }
+        Insert: {
+          clinic_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          level?: string
+          message: string
+          source?: string | null
+        }
+        Update: {
+          clinic_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          level?: string
+          message?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_logs_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tooth_status: {
         Row: {

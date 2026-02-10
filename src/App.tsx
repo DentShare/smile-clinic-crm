@@ -39,6 +39,10 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAlerts from "./pages/admin/AdminAlerts";
+import AdminClinics from "./pages/admin/AdminClinics";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -110,9 +114,10 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/clinics" element={<AdminDashboard />} />
-                <Route path="/admin/subscriptions" element={<AdminDashboard />} />
-                <Route path="/admin/analytics" element={<AdminDashboard />} />
+                <Route path="/admin/clinics" element={<AdminClinics />} />
+                <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+                <Route path="/admin/system-health" element={<AdminSystemHealth />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/admin/alerts" element={<AdminAlerts />} />
                 <Route path="/admin/settings" element={<AdminDashboard />} />
                 <Route path="/admin" element={<AdminDashboard />} />
