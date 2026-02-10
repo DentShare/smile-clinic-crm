@@ -78,6 +78,8 @@ const placeholders = [
   { key: '{{patient_name}}', description: 'ФИО пациента' },
   { key: '{{date}}', description: 'Текущая дата' },
   { key: '{{clinic_name}}', description: 'Название клиники' },
+  { key: '{{clinic_address}}', description: 'Адрес клиники' },
+  { key: '{{clinic_phone}}', description: 'Телефон клиники' },
   { key: '{{doctor_name}}', description: 'ФИО врача' },
 ];
 

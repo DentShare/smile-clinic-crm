@@ -21,16 +21,28 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Loader2, FileText, FileCheck, FilePenLine } from 'lucide-react';
+import { Loader2, FileText, FileCheck, FilePenLine, ListChecks } from 'lucide-react';
+import { formatCurrency } from '@/lib/formatters';
 
 interface DocumentTemplate {
   id: string;
   name: string;
   type: string | null;
   content: string;
+}
+
+interface PerformedWork {
+  id: string;
+  service_name: string;
+  price: number;
+  quantity: number;
+  discount_percent: number | null;
+  total: number;
+  tooth_number: number | null;
 }
 
 interface CreateDocumentDialogProps {
@@ -58,11 +70,13 @@ export function CreateDocumentDialog({
   clinicId,
   onDocumentCreated
 }: CreateDocumentDialogProps) {
-  const { profile } = useAuth();
+  const { profile, clinic } = useAuth();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'template' | 'custom'>('template');
+  const [includeServices, setIncludeServices] = useState(false);
+  const [performedWorks, setPerformedWorks] = useState<PerformedWork[]>([]);
   
   // Form fields
   const [title, setTitle] = useState('');
@@ -73,6 +87,7 @@ export function CreateDocumentDialog({
   useEffect(() => {
     if (open) {
       fetchTemplates();
+      fetchPerformedWorks();
       resetForm();
     }
   }, [open, clinicId]);
@@ -83,6 +98,7 @@ export function CreateDocumentDialog({
     setContent('');
     setSelectedTemplateId(null);
     setActiveTab('template');
+    setIncludeServices(false);
   };
 
   const fetchTemplates = async () => {
@@ -103,16 +119,112 @@ export function CreateDocumentDialog({
     }
   };
 
+  const fetchPerformedWorks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('performed_works')
+        .select(`
+          id,
+          price,
+          quantity,
+          discount_percent,
+          total,
+          tooth_number,
+          service_id,
+          services ( name )
+        `)
+        .eq('patient_id', patientId)
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const works: PerformedWork[] = (data || []).map((w: any) => ({
+        id: w.id,
+        service_name: w.services?.name || 'Услуга',
+        price: w.price,
+        quantity: w.quantity || 1,
+        discount_percent: w.discount_percent,
+        total: w.total,
+        tooth_number: w.tooth_number,
+      }));
+      setPerformedWorks(works);
+    } catch (err) {
+      console.error('Error fetching performed works:', err);
+    }
+  };
+
+  const replacePlaceholders = (text: string): string => {
+    let result = text;
+    result = result.replace(/\{\{patient_name\}\}/g, patientName);
+    result = result.replace(/\{\{date\}\}/g, new Date().toLocaleDateString('ru-RU'));
+    result = result.replace(/\{\{clinic_name\}\}/g, clinic?.name || '');
+    result = result.replace(/\{\{clinic_address\}\}/g, clinic?.address || '');
+    result = result.replace(/\{\{clinic_phone\}\}/g, clinic?.phone || '');
+    result = result.replace(/\{\{doctor_name\}\}/g, profile?.full_name || '');
+    return result;
+  };
+
+  const buildServicesTable = (): string => {
+    if (performedWorks.length === 0) return '\n\nОказанные услуги: нет данных\n';
+    
+    let table = '\n\n───────────────────────────────────────────────────\n';
+    table += 'ОКАЗАННЫЕ УСЛУГИ\n';
+    table += '───────────────────────────────────────────────────\n\n';
+
+    let totalSum = 0;
+    let totalDiscount = 0;
+
+    performedWorks.forEach((w, i) => {
+      const originalPrice = w.price * w.quantity;
+      const discount = w.discount_percent ? (originalPrice * w.discount_percent / 100) : 0;
+      totalDiscount += discount;
+      totalSum += w.total;
+
+      table += `${i + 1}. ${w.service_name}`;
+      if (w.tooth_number) table += ` (зуб №${w.tooth_number})`;
+      table += '\n';
+      table += `   Цена: ${formatCurrency(w.price)}`;
+      if (w.quantity > 1) table += ` × ${w.quantity}`;
+      if (w.discount_percent) {
+        table += ` | Скидка: ${w.discount_percent}%`;
+      }
+      table += ` | Итого: ${formatCurrency(w.total)}\n`;
+    });
+
+    table += '\n───────────────────────────────────────────────────\n';
+    if (totalDiscount > 0) {
+      table += `Скидка: ${formatCurrency(totalDiscount)}\n`;
+    }
+    table += `ИТОГО К ОПЛАТЕ: ${formatCurrency(totalSum)}\n`;
+    table += '───────────────────────────────────────────────────\n';
+
+    return table;
+  };
+
   const selectTemplate = (template: DocumentTemplate) => {
     setSelectedTemplateId(template.id);
     setTitle(template.name);
     setType(template.type || 'contract');
-    // Replace placeholders in content
-    let filledContent = template.content;
-    filledContent = filledContent.replace(/\{\{patient_name\}\}/g, patientName);
-    filledContent = filledContent.replace(/\{\{date\}\}/g, new Date().toLocaleDateString('ru-RU'));
+    const filledContent = replacePlaceholders(template.content);
     setContent(filledContent);
   };
+
+  // Re-apply services table when toggle changes
+  useEffect(() => {
+    if (!selectedTemplateId && activeTab !== 'custom') return;
+    
+    // Remove old services table if present
+    const marker = '───────────────────────────────────────────────────';
+    const firstMarker = content.indexOf(marker);
+    const baseContent = firstMarker > -1 ? content.substring(0, firstMarker).trimEnd() : content;
+    
+    if (includeServices) {
+      setContent(baseContent + buildServicesTable());
+    } else {
+      setContent(baseContent);
+    }
+  }, [includeServices]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -172,7 +284,7 @@ export function CreateDocumentDialog({
                 <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">Нет шаблонов</p>
                 <p className="text-sm text-muted-foreground">
-                  Создайте шаблоны в настройках клиники
+                  Создайте шаблоны в разделе «Документы»
                 </p>
               </div>
             ) : (
@@ -235,15 +347,28 @@ export function CreateDocumentDialog({
         </Tabs>
 
         {(selectedTemplateId || activeTab === 'custom') && (
-          <div className="space-y-2 mt-4">
-            <Label htmlFor="content">Содержание</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Текст документа..."
-              className="min-h-[150px]"
-            />
+          <div className="space-y-3 mt-4">
+            {/* Include services toggle */}
+            {performedWorks.length > 0 && (
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Добавить оказанные услуги ({performedWorks.length})</span>
+                </div>
+                <Switch checked={includeServices} onCheckedChange={setIncludeServices} />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="content">Содержание</Label>
+              <Textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Текст документа..."
+                className="min-h-[150px] font-mono text-sm"
+              />
+            </div>
           </div>
         )}
 
