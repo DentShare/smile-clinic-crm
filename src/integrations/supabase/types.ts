@@ -2818,6 +2818,24 @@ export type Database = {
         }
         Returns: string
       }
+      process_bonus_payment: {
+        Args: {
+          p_amount: number
+          p_clinic_id: string
+          p_deducted_by?: string
+          p_patient_id: string
+        }
+        Returns: Json
+      }
+      process_deposit_payment: {
+        Args: {
+          p_amount: number
+          p_clinic_id: string
+          p_deducted_by?: string
+          p_patient_id: string
+        }
+        Returns: Json
+      }
       process_patient_payment: {
         Args: {
           p_amount: number

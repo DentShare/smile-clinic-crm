@@ -32,7 +32,8 @@ import {
   X,
   ClipboardList,
   Pencil,
-  Check
+  Check,
+  Gift
 } from 'lucide-react';
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import { CategoryGroupedServiceSelect } from '@/components/services/CategoryGroupedServiceSelect';
@@ -113,6 +114,12 @@ export function CompleteVisitDialog({
   const [showPlanSection, setShowPlanSection] = useState(false);
   const [selectedPlanItems, setSelectedPlanItems] = useState<string[]>([]);
 
+  // Loyalty discount
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+
+  // Patient packages
+  const [patientPackages, setPatientPackages] = useState<any[]>([]);
+
   // Additional service selection
   const [selectedNewService, setSelectedNewService] = useState('');
   const [selectedNewToothNumber, setSelectedNewToothNumber] = useState<string>('');
@@ -135,8 +142,24 @@ export function CompleteVisitDialog({
       fetchServices();
       fetchPlans();
       fetchSummary();
+      fetchLoyaltyAndPackages();
     }
   }, [open, patientId, clinic]);
+
+  const fetchLoyaltyAndPackages = async () => {
+    if (!clinic) return;
+    const [loyaltyRes, pkgRes] = await Promise.all([
+      supabase.from('patient_loyalty').select('current_discount_percent').eq('patient_id', patientId).eq('clinic_id', clinic.id).maybeSingle(),
+      supabase.from('patient_packages')
+        .select('*, package:package_id(name, items:service_package_items(service_id, quantity))')
+        .eq('patient_id', patientId)
+        .eq('clinic_id', clinic.id)
+        .eq('status', 'active'),
+    ]);
+    const discount = loyaltyRes.data?.current_discount_percent || 0;
+    setLoyaltyDiscount(discount);
+    setPatientPackages(pkgRes.data || []);
+  };
 
   // Fetch the service that was scheduled with the appointment
   const fetchAppointmentService = async () => {
@@ -257,13 +280,18 @@ export function CompleteVisitDialog({
 
     const toothNum = selectedNewToothNumber ? parseInt(selectedNewToothNumber) : null;
 
+    // Check if this service is covered by any active package
+    const coveredPackage = patientPackages.find((pp: any) => 
+      pp.package?.items?.some((item: any) => item.service_id === service.id)
+    );
+
     setSelectedServices(prev => [...prev, {
       id: `manual-${service.id}-${Date.now()}`,
       service_id: service.id,
-      service_name: service.name,
-      price: Number(service.price),
+      service_name: service.name + (coveredPackage ? ' 📦' : ''),
+      price: coveredPackage ? 0 : Number(service.price),
       quantity: 1,
-      discount_percent: 0,
+      discount_percent: coveredPackage ? 0 : loyaltyDiscount,
       tooth_number: toothNum,
       fromPlan: false
     }]);
@@ -398,6 +426,23 @@ export function CompleteVisitDialog({
 
         const manualTotal = manualServices.reduce((sum, s) => sum + calculateServiceTotal(s), 0);
         totalAmount += manualTotal;
+
+        // Track package usage for zero-price services from packages
+        for (const s of manualServices) {
+          if (s.service_name.includes('📦') && s.service_id) {
+            const coveredPkg = patientPackages.find((pp: any) =>
+              pp.package?.items?.some((item: any) => item.service_id === s.service_id)
+            );
+            if (coveredPkg) {
+              await supabase.from('patient_package_usage').insert({
+                patient_package_id: coveredPkg.id,
+                service_id: s.service_id,
+                quantity: s.quantity,
+                appointment_id: appointmentId,
+              });
+            }
+          }
+        }
 
         // Update patient balance
         await supabase.rpc('calculate_patient_balance', { p_patient_id: patientId });
@@ -693,6 +738,12 @@ export function CompleteVisitDialog({
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div>
               <p className="text-sm text-muted-foreground">Услуг: {selectedServices.length}</p>
+              {loyaltyDiscount > 0 && (
+                <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                  <Gift className="h-3 w-3" />
+                  Скидка лояльности: {loyaltyDiscount}%
+                </p>
+              )}
               {summary && summary.current_debt > 0 && (
                 <p className="text-xs text-destructive flex items-center gap-1 mt-1">
                   <AlertCircle className="h-3 w-3" />
