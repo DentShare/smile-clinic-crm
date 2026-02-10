@@ -1,0 +1,382 @@
+import { useState, useMemo } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Building2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/clientRuntime';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+/* ─── Pricing config (matches landing page) ─── */
+const periods = [
+  { months: 3, discount: 0, label: '3 мес.' },
+  { months: 6, discount: 10, label: '6 мес.' },
+  { months: 12, discount: 20, label: '12 мес.' },
+  { months: 24, discount: 30, label: '24 мес.' },
+];
+
+const doctorOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+const plans = [
+  { key: 'basic', name: 'Базовый', basePrice: 99_000 },
+  { key: 'standard', name: 'Плановый', basePrice: 190_000 },
+  { key: 'strategic', name: 'Стратегический', basePrice: 290_000 },
+  { key: 'management', name: 'Управленческий', basePrice: 390_000 },
+];
+
+function formatPrice(n: number) {
+  return n.toLocaleString('ru-RU');
+}
+
+interface CreateClinicDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}
+
+export const CreateClinicDialog = ({ open, onOpenChange, onSuccess }: CreateClinicDialogProps) => {
+  // Owner fields
+  const [clinicName, setClinicName] = useState('');
+  const [subdomain, setSubdomain] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [country, setCountry] = useState('UZ');
+
+  // Tariff config
+  const [selectedPlan, setSelectedPlan] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState(0);
+  const [selectedDoctors, setSelectedDoctors] = useState(2); // index → 3 doctors
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const period = periods[selectedPeriod];
+  const plan = plans[selectedPlan];
+  const doctorCount = doctorOptions[selectedDoctors];
+
+  const price = useMemo(() => {
+    const monthly = Math.round(plan.basePrice * doctorCount * (1 - period.discount / 100));
+    const total = monthly * period.months;
+    return { monthly, total };
+  }, [selectedPlan, selectedPeriod, selectedDoctors]);
+
+  const resetForm = () => {
+    setClinicName('');
+    setSubdomain('');
+    setOwnerName('');
+    setOwnerEmail('');
+    setOwnerPhone('');
+    setOwnerPassword('');
+    setCountry('UZ');
+    setSelectedPlan(0);
+    setSelectedPeriod(0);
+    setSelectedDoctors(2);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // 1. Create user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: ownerEmail,
+        password: ownerPassword,
+        options: { data: { full_name: ownerName } },
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Не удалось создать пользователя');
+
+      // 2. Create clinic
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .insert({
+          name: clinicName,
+          subdomain,
+          phone: ownerPhone,
+          email: ownerEmail,
+          owner_name: ownerName,
+          country,
+        })
+        .select()
+        .single();
+      if (clinicError) throw clinicError;
+
+      // 3. Create profile
+      const { error: profileError } = await supabase.from('profiles').insert({
+        user_id: authData.user.id,
+        clinic_id: clinicData.id,
+        full_name: ownerName,
+        phone: ownerPhone,
+      });
+      if (profileError) throw profileError;
+
+      // 4. Assign clinic_admin role
+      const { error: roleError } = await supabase.from('user_roles').insert({
+        user_id: authData.user.id,
+        role: 'clinic_admin',
+      });
+      if (roleError) throw roleError;
+
+      // 5. Find matching subscription plan or use first available
+      const { data: subPlans } = await supabase
+        .from('subscription_plans')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('price_monthly');
+
+      let planId: string | null = null;
+      if (subPlans && subPlans.length > 0) {
+        // Map our plan keys to DB plans by index proximity
+        const planIndex = Math.min(selectedPlan, subPlans.length - 1);
+        planId = subPlans[planIndex].id;
+      }
+
+      if (planId) {
+        const periodEnd = new Date();
+        periodEnd.setMonth(periodEnd.getMonth() + period.months);
+
+        await supabase.from('clinic_subscriptions').insert({
+          clinic_id: clinicData.id,
+          plan_id: planId,
+          status: 'active',
+          current_period_start: new Date().toISOString(),
+          current_period_end: periodEnd.toISOString(),
+        });
+      }
+
+      toast.success('Клиника создана', {
+        description: `${clinicName} — ${ownerEmail}`,
+      });
+      resetForm();
+      onOpenChange(false);
+      onSuccess();
+    } catch (error: any) {
+      console.error('Create clinic error:', error);
+      toast.error('Ошибка создания клиники', { description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-800 border-slate-700 text-white">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Building2 className="h-5 w-5 text-primary" />
+            Создать новую клинику
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Заполните данные владельца и выберите тариф
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ─── Owner Info ─── */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Данные клиники</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Название клиники</Label>
+                <Input
+                  value={clinicName}
+                  onChange={(e) => setClinicName(e.target.value)}
+                  placeholder="Digital Implant"
+                  required
+                  className="bg-slate-700/50 border-slate-600 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Поддомен</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={subdomain}
+                    onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="digital"
+                    required
+                    className="bg-slate-700/50 border-slate-600 text-white flex-1"
+                  />
+                  <span className="text-xs text-slate-500">.dent-crm.uz</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Имя владельца</Label>
+                <Input
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  placeholder="Иван Иванов"
+                  required
+                  className="bg-slate-700/50 border-slate-600 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Телефон</Label>
+                <Input
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  placeholder="+998901234567"
+                  required
+                  className="bg-slate-700/50 border-slate-600 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Email владельца</Label>
+                <Input
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  placeholder="admin@clinic.uz"
+                  required
+                  className="bg-slate-700/50 border-slate-600 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Пароль</Label>
+                <Input
+                  type="password"
+                  value={ownerPassword}
+                  onChange={(e) => setOwnerPassword(e.target.value)}
+                  placeholder="Минимум 6 символов"
+                  required
+                  minLength={6}
+                  className="bg-slate-700/50 border-slate-600 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-slate-300">Страна</Label>
+              <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UZ">🇺🇿 Узбекистан</SelectItem>
+                  <SelectItem value="KZ">🇰🇿 Казахстан</SelectItem>
+                  <SelectItem value="KG">🇰🇬 Кыргызстан</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* ─── Tariff Config ─── */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Тариф</h3>
+
+            {/* Plan selector */}
+            <div className="space-y-2">
+              <Label className="text-slate-300">Тарифный план</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {plans.map((p, i) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setSelectedPlan(i)}
+                    className={cn(
+                      'flex flex-col items-center px-3 py-2.5 rounded-lg border-2 transition-all text-sm',
+                      selectedPlan === i
+                        ? 'border-primary bg-primary/10 text-white'
+                        : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-slate-500'
+                    )}
+                  >
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-xs mt-0.5">{formatPrice(p.basePrice)}/врач</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Period selector */}
+            <div className="space-y-2">
+              <Label className="text-slate-300">Срок подписки</Label>
+              <div className="flex gap-2">
+                {periods.map((p, i) => (
+                  <button
+                    key={p.months}
+                    type="button"
+                    onClick={() => setSelectedPeriod(i)}
+                    className={cn(
+                      'flex flex-col items-center px-4 py-2 rounded-lg border-2 transition-all text-sm',
+                      selectedPeriod === i
+                        ? 'border-primary bg-primary/10 text-white'
+                        : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-slate-500'
+                    )}
+                  >
+                    <span className="font-medium">{p.label}</span>
+                    {p.discount > 0 && (
+                      <Badge variant="secondary" className="mt-1 text-[10px] bg-green-500/20 text-green-400 border-0">
+                        −{p.discount}%
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Doctor count */}
+            <div className="space-y-2">
+              <Label className="text-slate-300">Количество врачей</Label>
+              <div className="flex gap-2">
+                {doctorOptions.map((d, i) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setSelectedDoctors(i)}
+                    className={cn(
+                      'w-9 h-9 rounded-lg border-2 flex items-center justify-center text-sm font-semibold transition-all',
+                      selectedDoctors === i
+                        ? 'border-primary bg-primary/10 text-white'
+                        : 'border-slate-600 bg-slate-700/30 text-slate-400 hover:border-slate-500'
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Price summary */}
+            <div className="rounded-lg bg-slate-700/40 border border-slate-600 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-400">Итого за {period.months} мес.</p>
+                  <p className="text-2xl font-bold text-white">{formatPrice(price.total)} so'm</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-slate-400">В месяц</p>
+                  <p className="text-lg font-semibold text-primary">{formatPrice(price.monthly)} so'm</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                {plan.name} • {doctorCount} {doctorCount === 1 ? 'врач' : doctorCount < 5 ? 'врача' : 'врачей'} • {period.months} мес.
+                {period.discount > 0 && ` • скидка ${period.discount}%`}
+              </p>
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Создание...
+              </>
+            ) : (
+              'Создать клинику'
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
