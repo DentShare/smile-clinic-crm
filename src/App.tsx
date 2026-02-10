@@ -29,6 +29,7 @@ import ToothChartDemo from "./pages/ToothChartDemo";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import Salary from "./pages/Salary";
 import WaitingList from "./pages/WaitingList";
+import LiveChat from "./pages/LiveChat";
 import BulkCampaigns from "./pages/BulkCampaigns";
 import Loyalty from "./pages/Loyalty";
 import Packages from "./pages/Packages";
@@ -90,6 +91,9 @@ const App = () => (
                 } />
                 <Route path="/campaigns" element={
                   <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><BulkCampaigns /></ProtectedRoute>
+                } />
+                <Route path="/live-chat" element={
+                  <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><LiveChat /></ProtectedRoute>
                 } />
                 <Route path="/loyalty" element={
                   <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Loyalty /></ProtectedRoute>
