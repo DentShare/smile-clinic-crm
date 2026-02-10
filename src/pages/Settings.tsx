@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Loader2, Clock, FileText } from 'lucide-react';
+import { Building2, Users, CreditCard, Loader2, Clock, FileText, MessageCircle } from 'lucide-react';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { DocumentTemplatesSettings } from '@/components/settings/DocumentTemplatesSettings';
 import { AssistantDoctorLinks } from '@/components/settings/AssistantDoctorLinks';
+import { MessengerSettings } from '@/components/settings/MessengerSettings';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -77,6 +78,10 @@ const Settings = () => {
           <TabsTrigger value="documents">
             <FileText className="mr-2 h-4 w-4" />
             Документы
+          </TabsTrigger>
+          <TabsTrigger value="messengers">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Мессенджеры
           </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="mr-2 h-4 w-4" />
@@ -145,6 +150,10 @@ const Settings = () => {
 
         <TabsContent value="documents" className="mt-6">
           <DocumentTemplatesSettings />
+        </TabsContent>
+
+        <TabsContent value="messengers" className="mt-6">
+          <MessengerSettings />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6">
