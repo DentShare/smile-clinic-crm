@@ -22,6 +22,7 @@ export interface ClinicTenant {
   email: string | null;
   inn: string | null;
   is_active: boolean;
+  country: string | null;
   acquisition_source: AcquisitionSource | null;
   acquisition_campaign: string | null;
   admin_notes: string | null;
