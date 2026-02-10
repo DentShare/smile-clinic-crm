@@ -19,6 +19,8 @@ interface Conversation {
   last_message_at: string | null;
   created_at: string;
   assigned_to: string | null;
+  channel: string;
+  external_chat_id: string | null;
 }
 
 interface Message {
@@ -159,11 +161,13 @@ const LiveChat = () => {
     };
     setMessages((prev) => [...prev, optimistic]);
 
+    // Store message in DB
     await supabase.from('chat_messages').insert({
       conversation_id: selectedConvId,
       sender_type: 'operator',
       sender_id: profile.id,
       content,
+      channel: selectedConv?.channel || 'web',
     });
 
     await supabase
@@ -174,6 +178,18 @@ const LiveChat = () => {
         assigned_to: profile.id,
       })
       .eq('id', selectedConvId);
+
+    // For external channels, send via edge function
+    const channel = selectedConv?.channel;
+    if (channel === 'telegram' || channel === 'whatsapp') {
+      try {
+        await supabase.functions.invoke('send-chat-reply', {
+          body: { conversation_id: selectedConvId, content },
+        });
+      } catch (err) {
+        console.error('Failed to send external reply:', err);
+      }
+    }
 
     setSending(false);
   };
@@ -227,9 +243,16 @@ const LiveChat = () => {
                   <span className="font-medium text-sm truncate">
                     {conv.visitor_name || 'Посетитель'}
                   </span>
-                  <Badge variant={conv.status === 'open' ? 'default' : 'secondary'} className="text-[10px]">
-                    {conv.status === 'open' ? 'Новый' : 'В работе'}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    {conv.channel && conv.channel !== 'web' && (
+                      <Badge variant="outline" className="text-[10px] px-1">
+                        {conv.channel === 'telegram' ? 'TG' : 'WA'}
+                      </Badge>
+                    )}
+                    <Badge variant={conv.status === 'open' ? 'default' : 'secondary'} className="text-[10px]">
+                      {conv.status === 'open' ? 'Новый' : 'В работе'}
+                    </Badge>
+                  </div>
                 </div>
                 {conv.visitor_phone && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -287,7 +310,14 @@ const LiveChat = () => {
                   <User className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{selectedConv?.visitor_name || 'Посетитель'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{selectedConv?.visitor_name || 'Посетитель'}</p>
+                    {selectedConv?.channel && selectedConv.channel !== 'web' && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {selectedConv.channel === 'telegram' ? 'Telegram' : 'WhatsApp'}
+                      </Badge>
+                    )}
+                  </div>
                   {selectedConv?.visitor_phone && (
                     <p className="text-xs text-muted-foreground">{selectedConv.visitor_phone}</p>
                   )}
