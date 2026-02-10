@@ -19,6 +19,7 @@ import {
   Send,
   Gift,
   ShoppingBag,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,6 +45,7 @@ const clinicNavItems: NavItem[] = [
   { title: 'Расчёт ЗП', href: '/salary', icon: Calculator, roles: ['clinic_admin', 'doctor'] },
   { title: 'Лояльность', href: '/loyalty', icon: Gift, roles: ['clinic_admin', 'reception'] },
   { title: 'Рассылки', href: '/campaigns', icon: Send, roles: ['clinic_admin', 'reception'] },
+  { title: 'Онлайн-чат', href: '/live-chat', icon: MessageCircle, roles: ['clinic_admin', 'reception'] },
   { title: 'Документы', href: '/documents', icon: FileText, roles: ['clinic_admin', 'reception'] },
   { title: 'Аналитика', href: '/analytics', icon: BarChart3, roles: ['clinic_admin'] },
   { title: 'Настройки', href: '/settings', icon: Settings, roles: ['clinic_admin'] },

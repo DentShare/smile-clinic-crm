@@ -5,9 +5,26 @@ import { Screenshots } from '@/components/landing/Screenshots';
 import { Testimonials } from '@/components/landing/Testimonials';
 import { Pricing } from '@/components/landing/Pricing';
 import { Footer } from '@/components/landing/Footer';
+import { ChatWidget } from '@/components/chat/ChatWidget';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  console.log('[Index] Rendering landing page');
+  const [clinicInfo, setClinicInfo] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    // Load first active clinic for demo; in production, resolve by subdomain
+    supabase
+      .from('clinics')
+      .select('id, name')
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setClinicInfo({ id: data.id, name: data.name });
+      });
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -17,6 +34,9 @@ const Index = () => {
       <Testimonials />
       <Pricing />
       <Footer />
+      {clinicInfo && (
+        <ChatWidget clinicId={clinicInfo.id} clinicName={clinicInfo.name} />
+      )}
     </div>
   );
 };
