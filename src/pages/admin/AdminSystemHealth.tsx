@@ -3,28 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  Activity,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Clock,
-} from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -51,11 +35,7 @@ interface SystemLog {
 
 const AdminSystemHealth = () => {
   const [status, setStatus] = useState<SystemStatus>({
-    api: 'checking',
-    database: 'checking',
-    apiLatency: null,
-    dbLatency: null,
-    lastChecked: null,
+    api: 'checking', database: 'checking', apiLatency: null, dbLatency: null, lastChecked: null,
   });
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
@@ -63,25 +43,18 @@ const AdminSystemHealth = () => {
 
   const checkHealth = useCallback(async () => {
     setStatus(prev => ({ ...prev, api: 'checking', database: 'checking' }));
-
-    // Check API
     const apiStart = Date.now();
     let apiStatus: 'up' | 'down' = 'down';
     let apiLatency = 0;
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-        headers: {
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
+        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
       apiLatency = Date.now() - apiStart;
       apiStatus = response.ok ? 'up' : 'down';
     } catch {
       apiLatency = Date.now() - apiStart;
-      apiStatus = 'down';
     }
-
-    // Check Database
     const dbStart = Date.now();
     let dbStatus: 'up' | 'down' = 'down';
     let dbLatency = 0;
@@ -91,40 +64,18 @@ const AdminSystemHealth = () => {
       dbStatus = error ? 'down' : 'up';
     } catch {
       dbLatency = Date.now() - dbStart;
-      dbStatus = 'down';
     }
-
-    setStatus({
-      api: apiStatus,
-      database: dbStatus,
-      apiLatency,
-      dbLatency,
-      lastChecked: new Date(),
-    });
+    setStatus({ api: apiStatus, database: dbStatus, apiLatency, dbLatency, lastChecked: new Date() });
   }, []);
 
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
     try {
-      let query = supabase
-        .from('system_logs')
-        .select('*, clinics(name)')
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (levelFilter !== 'all') {
-        query = query.eq('level', levelFilter);
-      }
-
+      let query = supabase.from('system_logs').select('*, clinics(name)').order('created_at', { ascending: false }).limit(100);
+      if (levelFilter !== 'all') query = query.eq('level', levelFilter);
       const { data, error } = await query;
       if (error) throw error;
-
-      setLogs(
-        (data || []).map((log: any) => ({
-          ...log,
-          clinic_name: log.clinics?.name || null,
-        }))
-      );
+      setLogs((data || []).map((log: any) => ({ ...log, clinic_name: log.clinics?.name || null })));
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -132,10 +83,7 @@ const AdminSystemHealth = () => {
     }
   }, [levelFilter]);
 
-  useEffect(() => {
-    checkHealth();
-    fetchLogs();
-  }, [checkHealth, fetchLogs]);
+  useEffect(() => { checkHealth(); fetchLogs(); }, [checkHealth, fetchLogs]);
 
   const StatusIndicator = ({ state, label, latency }: { state: 'up' | 'down' | 'checking'; label: string; latency: number | null }) => (
     <Card className={cn(
@@ -149,20 +97,11 @@ const AdminSystemHealth = () => {
         {state === 'down' && <XCircle className="h-10 w-10 text-destructive" />}
         {state === 'checking' && <RefreshCw className="h-10 w-10 text-muted-foreground animate-spin" />}
         <div>
-          <p className="text-lg font-semibold">{label}</p>
-          <p className={cn(
-            'text-sm',
-            state === 'up' && 'text-chart-2',
-            state === 'down' && 'text-destructive',
-            state === 'checking' && 'text-muted-foreground'
-          )}>
+          <p className="text-lg font-semibold text-foreground">{label}</p>
+          <p className={cn('text-sm', state === 'up' && 'text-chart-2', state === 'down' && 'text-destructive', state === 'checking' && 'text-muted-foreground')}>
             {state === 'up' ? 'Работает' : state === 'down' ? 'Недоступен' : 'Проверка...'}
           </p>
-          {latency !== null && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Задержка: {latency}ms
-            </p>
-          )}
+          {latency !== null && <p className="text-xs text-muted-foreground mt-1">Задержка: {latency}ms</p>}
         </div>
       </CardContent>
     </Card>
@@ -178,8 +117,8 @@ const AdminSystemHealth = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Состояние системы</h1>
-          <p className="text-slate-400">Мониторинг работоспособности платформы</p>
+          <h1 className="text-2xl font-bold text-foreground">Состояние системы</h1>
+          <p className="text-muted-foreground">Мониторинг работоспособности платформы</p>
         </div>
         <div className="flex items-center gap-3">
           {status.lastChecked && (
@@ -188,65 +127,37 @@ const AdminSystemHealth = () => {
               Проверено: {format(status.lastChecked, 'HH:mm:ss', { locale: ru })}
             </span>
           )}
-          <Button
-            variant="outline"
-            className="gap-2 border-slate-600 text-slate-300"
-            onClick={() => { checkHealth(); fetchLogs(); }}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => { checkHealth(); fetchLogs(); }}>
             <RefreshCw className="h-4 w-4" />
             Проверить
           </Button>
         </div>
       </div>
 
-      {/* System Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <StatusIndicator
-          state={status.api}
-          label="API (REST)"
-          latency={status.apiLatency}
-        />
-        <StatusIndicator
-          state={status.database}
-          label="База данных"
-          latency={status.dbLatency}
-        />
+        <StatusIndicator state={status.api} label="API (REST)" latency={status.apiLatency} />
+        <StatusIndicator state={status.database} label="База данных" latency={status.dbLatency} />
       </div>
 
-      {/* Overall Status */}
-      <Card className={cn(
-        'border-2',
-        status.api === 'up' && status.database === 'up'
-          ? 'border-chart-2/30 bg-chart-2/5'
-          : 'border-destructive/30 bg-destructive/5'
-      )}>
+      <Card className={cn('border-2', status.api === 'up' && status.database === 'up' ? 'border-chart-2/30 bg-chart-2/5' : 'border-destructive/30 bg-destructive/5')}>
         <CardContent className="p-4 flex items-center justify-center gap-3">
           {status.api === 'up' && status.database === 'up' ? (
-            <>
-              <CheckCircle2 className="h-6 w-6 text-chart-2" />
-              <span className="text-lg font-semibold text-chart-2">Все системы работают нормально</span>
-            </>
+            <><CheckCircle2 className="h-6 w-6 text-chart-2" /><span className="text-lg font-semibold text-chart-2">Все системы работают нормально</span></>
           ) : (
-            <>
-              <XCircle className="h-6 w-6 text-destructive" />
-              <span className="text-lg font-semibold text-destructive">Обнаружены проблемы</span>
-            </>
+            <><XCircle className="h-6 w-6 text-destructive" /><span className="text-lg font-semibold text-destructive">Обнаружены проблемы</span></>
           )}
         </CardContent>
       </Card>
 
-      {/* Error Logs */}
-      <Card className="border-slate-700 bg-slate-800/50">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">Журнал событий</CardTitle>
+              <CardTitle>Журнал событий</CardTitle>
               <CardDescription>Последние системные события и ошибки</CardDescription>
             </div>
             <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все уровни</SelectItem>
                 <SelectItem value="error">Ошибки</SelectItem>
@@ -262,14 +173,14 @@ const AdminSystemHealth = () => {
           ) : logs.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle2 className="h-12 w-12 text-chart-2 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-white mb-1">Чисто!</h3>
-              <p className="text-slate-400">Нет записей в журнале</p>
+              <h3 className="text-lg font-medium text-foreground mb-1">Чисто!</h3>
+              <p className="text-muted-foreground">Нет записей в журнале</p>
             </div>
           ) : (
-            <div className="rounded-md border border-slate-700">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700">
+                  <TableRow>
                     <TableHead className="w-[100px]">Уровень</TableHead>
                     <TableHead className="w-[160px]">Дата</TableHead>
                     <TableHead>Сообщение</TableHead>
@@ -282,12 +193,9 @@ const AdminSystemHealth = () => {
                     const config = levelConfig[log.level] || levelConfig.info;
                     const Icon = config.icon;
                     return (
-                      <TableRow key={log.id} className="border-slate-700">
+                      <TableRow key={log.id}>
                         <TableCell>
-                          <Badge
-                            variant={log.level === 'error' ? 'destructive' : 'outline'}
-                            className="gap-1"
-                          >
+                          <Badge variant={log.level === 'error' ? 'destructive' : 'outline'} className="gap-1">
                             <Icon className={cn('h-3 w-3', config.color)} />
                             {config.label}
                           </Badge>
@@ -295,15 +203,9 @@ const AdminSystemHealth = () => {
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(log.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                         </TableCell>
-                        <TableCell className="max-w-[300px] truncate text-sm">
-                          {log.message}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {log.clinic_name || (log.clinic_id ? log.clinic_id.slice(0, 8) + '...' : '—')}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {log.source || '—'}
-                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate text-sm">{log.message}</TableCell>
+                        <TableCell className="text-sm">{log.clinic_name || (log.clinic_id ? log.clinic_id.slice(0, 8) + '...' : '—')}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{log.source || '—'}</TableCell>
                       </TableRow>
                     );
                   })}

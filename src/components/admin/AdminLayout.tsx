@@ -49,17 +49,17 @@ export const AdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-900">
+    <div className="dark flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="flex w-64 flex-col border-r border-slate-700 bg-slate-800">
+      <div className="flex w-64 flex-col border-r border-border bg-card">
         {/* Header */}
-        <div className="flex h-16 items-center gap-3 border-b border-slate-700 px-4">
+        <div className="flex h-16 items-center gap-3 border-b border-border px-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <span className="font-semibold text-white">Super Admin</span>
-            <p className="text-xs text-slate-400">DentaClinic Platform</p>
+            <span className="font-semibold text-foreground">Super Admin</span>
+            <p className="text-xs text-muted-foreground">DentaClinic Platform</p>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ export const AdminLayout = () => {
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   location.pathname === item.href
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-slate-400 hover:bg-slate-700 hover:text-white'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -100,19 +100,19 @@ export const AdminLayout = () => {
         )}
 
         {/* User Section */}
-        <div className="border-t border-slate-700 p-4">
+        <div className="border-t border-border p-4">
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
               {profile?.full_name?.charAt(0) || 'A'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium text-white">{profile?.full_name}</p>
-              <p className="truncate text-xs text-slate-400">Super Admin</p>
+              <p className="truncate text-sm font-medium text-foreground">{profile?.full_name}</p>
+              <p className="truncate text-xs text-muted-foreground">Super Admin</p>
             </div>
           </div>
           <Button
             variant="outline"
-            className="w-full justify-start gap-2 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+            className="w-full justify-start gap-2"
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4" />
@@ -122,7 +122,7 @@ export const AdminLayout = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-slate-900">
+      <main className="flex-1 overflow-auto bg-background">
         <Outlet />
       </main>
     </div>

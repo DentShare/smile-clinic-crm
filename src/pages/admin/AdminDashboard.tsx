@@ -43,7 +43,6 @@ const AdminDashboard = () => {
 
   const handleLoginAsClinic = (_clinic: ClinicTenant) => {
     toast.info('Функция "Войти как клиника" в разработке');
-    // TODO: Implement impersonation
   };
 
   const handleExtendSubscription = (clinic: ClinicTenant) => {
@@ -53,7 +52,6 @@ const AdminDashboard = () => {
 
   const handleBlockClinic = async (clinic: ClinicTenant) => {
     toast.info(`${clinic.is_active ? 'Блокировка' : 'Разблокировка'} клиники ${clinic.name} в разработке`);
-    // TODO: Implement block/unblock
   };
 
   if (loading) {
@@ -66,33 +64,23 @@ const AdminDashboard = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header with Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Панель управления</h1>
-          <p className="text-slate-400">Обзор платформы DentaClinic</p>
+          <h1 className="text-2xl font-bold text-foreground">Панель управления</h1>
+          <p className="text-muted-foreground">Обзор платформы DentaClinic</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="gap-2 border-slate-600 text-slate-300"
-            onClick={() => exportClinics(clinics)}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => exportClinics(clinics)}>
             <Download className="h-4 w-4" />
             Экспорт Excel
           </Button>
-          <Button
-            variant="outline"
-            className="gap-2 border-slate-600 text-slate-300"
-            onClick={() => refresh()}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => refresh()}>
             <RefreshCw className="h-4 w-4" />
             Обновить
           </Button>
         </div>
       </div>
 
-      {/* Critical Alerts Banner */}
       {criticalAlerts.length > 0 && (
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="p-4">
@@ -119,11 +107,7 @@ const AdminDashboard = () => {
                   <Download className="h-4 w-4 mr-1" />
                   Экспорт
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  asChild
-                >
+                <Button variant="destructive" size="sm" asChild>
                   <Link to="/admin/alerts">
                     <Bell className="h-4 w-4 mr-1" />
                     Открыть алерты
@@ -135,18 +119,16 @@ const AdminDashboard = () => {
         </Card>
       )}
 
-      {/* KPI Cards */}
       <KPICards kpis={kpis} />
 
-      {/* Main Content Tabs */}
       <Tabs defaultValue="clinics" className="space-y-4">
-        <TabsList className="bg-slate-800 border border-slate-700">
-          <TabsTrigger value="clinics" className="data-[state=active]:bg-primary">
+        <TabsList>
+          <TabsTrigger value="clinics">
             <Building2 className="h-4 w-4 mr-2" />
             Клиники
             <Badge variant="secondary" className="ml-2">{clinics.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary">
+          <TabsTrigger value="analytics">
             Аналитика
           </TabsTrigger>
         </TabsList>
@@ -170,7 +152,6 @@ const AdminDashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Clinic Detail Drawer */}
       <ClinicDetailDrawer
         clinic={selectedClinic}
         open={drawerOpen}
@@ -178,7 +159,6 @@ const AdminDashboard = () => {
         onRefresh={refresh}
       />
 
-      {/* Extend Subscription Dialog */}
       <ExtendSubscriptionDialog
         clinic={clinicToExtend}
         open={extendDialogOpen}
