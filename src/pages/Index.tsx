@@ -7,7 +7,7 @@ import { Pricing } from '@/components/landing/Pricing';
 import { Footer } from '@/components/landing/Footer';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 
 const Index = () => {
   const [clinicInfo, setClinicInfo] = useState<{ id: string; name: string } | null>(null);

@@ -3,7 +3,7 @@ import { MessageCircle, X, Send, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { cn } from '@/lib/utils';
 
 interface Message {
