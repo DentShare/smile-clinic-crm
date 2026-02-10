@@ -3,8 +3,9 @@ import { useSuperAdminData } from '@/hooks/use-super-admin-data';
 import { TenantsTable } from '@/components/admin/TenantsTable';
 import { ClinicDetailDrawer } from '@/components/admin/ClinicDetailDrawer';
 import { ExtendSubscriptionDialog } from '@/components/admin/ExtendSubscriptionDialog';
+import { CreateClinicDialog } from '@/components/admin/CreateClinicDialog';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, Plus } from 'lucide-react';
 import { useExcelExport } from '@/hooks/use-excel-export';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/clientRuntime';
@@ -17,6 +18,7 @@ const AdminClinics = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
   const [clinicToExtend, setClinicToExtend] = useState<ClinicTenant | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const handleSelectClinic = (clinic: ClinicTenant) => {
     setSelectedClinic(clinic);
@@ -73,6 +75,13 @@ const AdminClinics = () => {
             <RefreshCw className="h-4 w-4" />
             Обновить
           </Button>
+          <Button
+            className="gap-2"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Новая клиника
+          </Button>
         </div>
       </div>
 
@@ -96,6 +105,12 @@ const AdminClinics = () => {
         clinic={clinicToExtend}
         open={extendDialogOpen}
         onOpenChange={setExtendDialogOpen}
+        onSuccess={refresh}
+      />
+
+      <CreateClinicDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
         onSuccess={refresh}
       />
     </div>
