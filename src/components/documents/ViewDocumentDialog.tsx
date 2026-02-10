@@ -81,7 +81,7 @@ export function ViewDocumentDialog({
         .from('patients')
         .select('full_name')
         .eq('id', document.patient_id)
-        .single();
+        .maybeSingle();
       if (patient) setPatientName(patient.full_name);
     }
     // Fetch doctor/creator name
@@ -90,7 +90,7 @@ export function ViewDocumentDialog({
         .from('profiles')
         .select('full_name, specialization')
         .eq('id', document.created_by)
-        .single();
+        .maybeSingle();
       if (creator) setDoctorName(creator.full_name + (creator.specialization ? `, ${creator.specialization}` : ''));
     }
   };

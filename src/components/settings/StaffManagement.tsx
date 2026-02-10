@@ -163,7 +163,7 @@ export function StaffManagement() {
         `)
         .eq('clinic_id', clinic.id)
         .in('status', ['active', 'trial'])
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

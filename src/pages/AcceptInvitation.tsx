@@ -63,7 +63,7 @@ const AcceptInvitation = () => {
           clinics:clinic_id (name)
         `)
         .eq('token', token)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !data) {
         setError('Приглашение не найдено');

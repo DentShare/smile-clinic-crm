@@ -183,7 +183,7 @@ export function CompleteVisitDialog({
           .from('services')
           .select('*')
           .eq('id', appointment.service_id)
-          .single();
+          .maybeSingle();
 
         if (service) {
           initialServices.push({
@@ -403,7 +403,7 @@ export function CompleteVisitDialog({
           .from('appointments')
           .select('patient_id')
           .eq('id', appointmentId)
-          .single();
+          .maybeSingle();
 
         const performedWorks = manualServices.map(s => ({
           clinic_id: clinic.id,

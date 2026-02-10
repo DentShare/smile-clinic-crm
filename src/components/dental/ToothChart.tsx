@@ -120,7 +120,7 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
         .eq('patient_id', patientId)
         .eq('clinic_id', clinic.id)
         .eq('tooth_number', selectedTooth)
-        .single();
+        .maybeSingle();
 
       if (existingRecord.data) {
         const { error } = await supabase
