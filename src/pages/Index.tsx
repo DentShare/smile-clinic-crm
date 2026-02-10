@@ -19,7 +19,7 @@ const Index = () => {
       .select('id, name')
       .eq('is_active', true)
       .limit(1)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data) setClinicInfo({ id: data.id, name: data.name });
       });

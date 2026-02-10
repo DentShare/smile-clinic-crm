@@ -55,13 +55,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('clinics')
             .select('*')
             .eq('id', profileData.clinic_id)
-            .single();
+            .maybeSingle();
 
           if (clinicData) {
             const mappedClinic: Clinic = {
               ...clinicData,
               is_active: clinicData.is_active ?? true,
               settings: clinicData.settings as Clinic['settings'],
+              created_at: clinicData.created_at ?? new Date().toISOString(),
+              updated_at: clinicData.updated_at ?? new Date().toISOString(),
             };
             setClinic(mappedClinic);
           }
