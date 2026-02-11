@@ -15,6 +15,7 @@ interface InvitationRequest {
   clinicId: string;
   clinicName: string;
   inviterName: string;
+  specialization?: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -64,8 +65,8 @@ serve(async (req) => {
       );
     }
 
-    const { email, role, clinicId, clinicName, inviterName }: InvitationRequest = await req.json();
-    console.log("Creating invitation for:", email, "role:", role, "clinic:", clinicId);
+    const { email, role, clinicId, clinicName, inviterName, specialization }: InvitationRequest = await req.json();
+    console.log("Creating invitation for:", email, "role:", role, "specialization:", specialization, "clinic:", clinicId);
 
     // Generate secure token
     const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
@@ -79,6 +80,7 @@ serve(async (req) => {
         role,
         token,
         invited_by: user.id,
+        specialization: role === 'doctor' ? specialization || null : null,
       });
 
     if (insertError) {
