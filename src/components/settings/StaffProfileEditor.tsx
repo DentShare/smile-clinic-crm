@@ -4,18 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import type { Profile } from '@/types/database';
+
+const doctorSpecializations = [
+  'Терапевт',
+  'Ортопед',
+  'Гнатолог',
+  'Челюстно-лицевой хирург',
+  'Ортодонт',
+  'Детский стоматолог',
+  'Имплантолог',
+  'Эндодонтист',
+  'Гигиенист',
+  'Пародонтолог',
+];
 
 interface StaffProfileEditorProps {
   profile: Profile | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  isDoctor?: boolean;
 }
 
-export function StaffProfileEditor({ profile, open, onOpenChange, onSaved }: StaffProfileEditorProps) {
+export function StaffProfileEditor({ profile, open, onOpenChange, onSaved, isDoctor }: StaffProfileEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -23,7 +38,6 @@ export function StaffProfileEditor({ profile, open, onOpenChange, onSaved }: Sta
     specialization: '',
   });
 
-  // Update form when profile changes
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -92,15 +106,36 @@ export function StaffProfileEditor({ profile, open, onOpenChange, onSaved }: Sta
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="specialization">Должность / Специализация</Label>
-            <Input
-              id="specialization"
-              value={formData.specialization}
-              onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-              placeholder="Стоматолог-терапевт"
-            />
-          </div>
+          {isDoctor ? (
+            <div className="space-y-2">
+              <Label>Специализация</Label>
+              <Select
+                value={formData.specialization}
+                onValueChange={(value) => setFormData({ ...formData, specialization: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите специализацию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctorSpecializations.map((spec) => (
+                    <SelectItem key={spec} value={spec}>
+                      {spec}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="specialization">Должность / Специализация</Label>
+              <Input
+                id="specialization"
+                value={formData.specialization}
+                onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                placeholder="Администратор"
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>

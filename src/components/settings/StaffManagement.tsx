@@ -797,6 +797,7 @@ export function StaffManagement() {
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onSaved={fetchStaff}
+        isDoctor={editingProfile ? staff.find(s => s.id === editingProfile.id)?.roles?.includes('doctor') ?? false : false}
       />
     </div>
   );
