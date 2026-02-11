@@ -2917,6 +2917,17 @@ export type Database = {
         }
         Returns: Json
       }
+      register_clinic: {
+        Args: {
+          _clinic_name: string
+          _email: string
+          _full_name: string
+          _phone: string
+          _subdomain: string
+          _user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role:
