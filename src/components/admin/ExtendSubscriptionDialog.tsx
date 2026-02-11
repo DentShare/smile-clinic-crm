@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,21 +9,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Calendar, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { ClinicTenant } from '@/types/superAdmin';
-
-interface Plan {
-  id: string;
-  name: string;
-  name_ru: string;
-  price_monthly: number;
-  max_doctors: number | null;
-  max_staff: number | null;
-  features: Record<string, boolean>;
-}
 
 interface ExtendSubscriptionDialogProps {
   clinic: ClinicTenant | null;
@@ -32,27 +23,33 @@ interface ExtendSubscriptionDialogProps {
   onSuccess: () => void;
 }
 
-const DURATION_OPTIONS = [
-  { value: '1', label: '1 месяц' },
-  { value: '3', label: '3 месяца' },
-  { value: '6', label: '6 месяцев' },
-  { value: '12', label: '12 месяцев' },
-  { value: '24', label: '24 месяца' },
+/* ─── Same pricing config as landing page ─── */
+const periods = [
+  { months: 3, discount: 0, label: '3 мес.' },
+  { months: 6, discount: 10, label: '6 мес.' },
+  { months: 12, discount: 20, label: '12 мес.' },
+  { months: 24, discount: 30, label: '24 мес.' },
 ];
 
-const DOCTOR_COUNT_OPTIONS = [
-  { value: '1', label: '1 врач' },
-  { value: '2', label: '2 врача' },
-  { value: '3', label: '3 врача' },
-  { value: '4', label: '4 врача' },
-  { value: '5', label: '5 врачей' },
-  { value: '6', label: '6 врачей' },
-  { value: '7', label: '7 врачей' },
-  { value: '8', label: '8 врачей' },
-  { value: '9', label: '9 врачей' },
-  { value: '10', label: '10 врачей' },
-  { value: '0', label: 'Безлимит' },
+const doctorOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+const planConfigs = [
+  { key: 'basic', name: 'Базовый', basePrice: 99_000 },
+  { key: 'standard', name: 'Плановый', basePrice: 190_000 },
+  { key: 'strategic', name: 'Стратегический', basePrice: 290_000 },
+  { key: 'management', name: 'Управленческий', basePrice: 390_000 },
 ];
+
+function formatPrice(n: number) {
+  return n.toLocaleString('ru-RU');
+}
+
+interface DbPlan {
+  id: string;
+  name: string;
+  name_ru: string;
+  price_monthly: number;
+}
 
 export function ExtendSubscriptionDialog({
   clinic,
@@ -60,50 +57,48 @@ export function ExtendSubscriptionDialog({
   onOpenChange,
   onSuccess,
 }: ExtendSubscriptionDialogProps) {
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState('');
-  const [duration, setDuration] = useState('1');
-  const [doctorCount, setDoctorCount] = useState('2');
+  const [dbPlans, setDbPlans] = useState<DbPlan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState(0);
+  const [selectedDoctors, setSelectedDoctors] = useState(1); // index
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchPlans();
-      // Pre-fill from current subscription
-      if (clinic?.subscription) {
-        setSelectedPlanId(clinic.subscription.plan_id);
-      }
     }
-  }, [open, clinic]);
+  }, [open]);
 
   const fetchPlans = async () => {
     const { data } = await supabase
       .from('subscription_plans')
-      .select('id, name, name_ru, price_monthly, max_doctors, max_staff, features')
+      .select('id, name, name_ru, price_monthly')
       .eq('is_active', true)
       .order('price_monthly');
-    if (data) {
-      setPlans(data.map(p => ({
-        ...p,
-        features: (p.features as Record<string, boolean>) || {},
-      })));
-    }
+    if (data) setDbPlans(data);
   };
 
-  const selectedPlan = plans.find(p => p.id === selectedPlanId);
+  const period = periods[selectedPeriod];
+  const planConfig = planConfigs[selectedPlan];
+  const doctorCount = doctorOptions[selectedDoctors];
 
-  const totalPrice = selectedPlan
-    ? selectedPlan.price_monthly * parseInt(duration)
-    : 0;
+  const price = useMemo(() => {
+    const monthly = Math.round(planConfig.basePrice * doctorCount * (1 - period.discount / 100));
+    const total = monthly * period.months;
+    return { monthly, total };
+  }, [selectedPlan, selectedPeriod, selectedDoctors]);
 
   const handleSubmit = async () => {
-    if (!clinic || !selectedPlanId) return;
+    if (!clinic) return;
     setLoading(true);
 
     try {
-      const durationMonths = parseInt(duration);
-      const doctors = parseInt(doctorCount);
+      // Match DB plan by index
+      const dbPlan = dbPlans[Math.min(selectedPlan, dbPlans.length - 1)];
+      if (!dbPlan) throw new Error('Тариф не найден');
+
+      const durationMonths = period.months;
 
       // Calculate new period end
       const currentEnd = clinic.subscription?.current_period_end
@@ -119,37 +114,34 @@ export function ExtendSubscriptionDialog({
         .insert({
           clinic_id: clinic.id,
           days_added: durationMonths * 30,
-          reason: reason || `Продление: ${selectedPlan?.name_ru}, ${durationMonths} мес., ${doctors === 0 ? 'безлимит' : doctors} врачей`,
+          reason: reason || `Продление: ${planConfig.name}, ${durationMonths} мес., ${doctorCount} врачей`,
         });
-
       if (adjustmentError) throw adjustmentError;
 
       // Update subscription
       const { error: subError } = await supabase
         .from('clinic_subscriptions')
         .update({
-          plan_id: selectedPlanId,
+          plan_id: dbPlan.id,
           current_period_end: newEnd.toISOString(),
           current_period_start: new Date().toISOString(),
           status: 'active',
-          max_doctors_override: doctors === 0 ? null : doctors,
+          max_doctors_override: doctorCount,
           billing_period_months: durationMonths,
         } as any)
         .eq('clinic_id', clinic.id);
-
       if (subError) throw subError;
 
       // Add billing history record
       await supabase.from('billing_history').insert({
         clinic_id: clinic.id,
-        amount: totalPrice,
+        amount: price.total,
         status: 'paid',
         payment_method: 'manual',
-        description: `${selectedPlan?.name_ru} — ${durationMonths} мес., ${doctors === 0 ? 'безлимит' : doctors} врачей`,
+        description: `${planConfig.name} — ${durationMonths} мес., ${doctorCount} врачей`,
       });
 
-      toast.success(`Подписка обновлена: ${selectedPlan?.name_ru}, ${durationMonths} мес.`);
-      resetForm();
+      toast.success(`Подписка обновлена: ${planConfig.name}, ${durationMonths} мес.`);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -160,18 +152,11 @@ export function ExtendSubscriptionDialog({
     }
   };
 
-  const resetForm = () => {
-    setSelectedPlanId('');
-    setDuration('1');
-    setDoctorCount('2');
-    setReason('');
-  };
-
   if (!clinic) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -179,12 +164,11 @@ export function ExtendSubscriptionDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-5 py-4">
+          {/* Clinic info */}
           <div className="bg-muted/50 p-3 rounded-lg">
             <p className="font-medium">{clinic.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {clinic.subdomain}.dent-crm.uz
-            </p>
+            <p className="text-sm text-muted-foreground">{clinic.subdomain}.dent-crm.uz</p>
             {clinic.subscription && (
               <p className="text-xs text-muted-foreground mt-1">
                 Текущий: {clinic.subscription.plan_name_ru} — {clinic.subscription.status}
@@ -192,76 +176,97 @@ export function ExtendSubscriptionDialog({
             )}
           </div>
 
+          {/* Plan selector */}
           <div className="space-y-2">
-            <Label>Тариф</Label>
-            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите тариф" />
-              </SelectTrigger>
-              <SelectContent>
-                {plans.map(plan => (
-                  <SelectItem key={plan.id} value={plan.id}>
-                    {plan.name_ru} — {(plan.price_monthly / 1000).toFixed(0)}k сум/мес
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Тарифный план</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {planConfigs.map((p, i) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setSelectedPlan(i)}
+                  className={cn(
+                    'flex flex-col items-center px-3 py-2.5 rounded-lg border-2 transition-all text-sm',
+                    selectedPlan === i
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-muted-foreground/50'
+                  )}
+                >
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-xs mt-0.5">{formatPrice(p.basePrice)}/врач</span>
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Period selector */}
           <div className="space-y-2">
             <Label>Срок подписки</Label>
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {periods.map((p, i) => (
+                <button
+                  key={p.months}
+                  type="button"
+                  onClick={() => setSelectedPeriod(i)}
+                  className={cn(
+                    'flex flex-col items-center px-4 py-2 rounded-lg border-2 transition-all text-sm flex-1',
+                    selectedPeriod === i
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-muted-foreground/50'
+                  )}
+                >
+                  <span className="font-medium">{p.label}</span>
+                  {p.discount > 0 && (
+                    <Badge variant="secondary" className="mt-1 text-[10px] bg-primary/10 text-primary border-0">
+                      −{p.discount}%
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Doctor count selector */}
           <div className="space-y-2">
             <Label>Количество врачей</Label>
-            <Select value={doctorCount} onValueChange={setDoctorCount}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCTOR_COUNT_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {doctorOptions.map((d, i) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDoctors(i)}
+                  className={cn(
+                    'w-9 h-9 rounded-lg border-2 flex items-center justify-center text-sm font-semibold transition-all',
+                    selectedDoctors === i
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-muted-foreground/50'
+                  )}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {selectedPlan && (
-            <div className="bg-muted/50 p-3 rounded-lg space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Тариф:</span>
-                <span className="font-medium">{selectedPlan.name_ru}</span>
+          {/* Price summary */}
+          <div className="rounded-lg bg-muted/50 border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Итого за {period.months} мес.</p>
+                <p className="text-2xl font-bold text-foreground">{formatPrice(price.total)} so'm</p>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Срок:</span>
-                <span className="font-medium">{duration} мес.</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Врачей:</span>
-                <span className="font-medium">{doctorCount === '0' ? 'Безлимит' : doctorCount}</span>
-              </div>
-              <div className="border-t border-border my-2" />
-              <div className="flex justify-between font-medium">
-                <span>Итого:</span>
-                <span>{totalPrice.toLocaleString('ru-RU')} сум</span>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">В месяц</p>
+                <p className="text-lg font-semibold text-primary">{formatPrice(price.monthly)} so'm</p>
               </div>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground mt-2">
+              {planConfig.name} • {doctorCount} {doctorCount === 1 ? 'врач' : doctorCount < 5 ? 'врача' : 'врачей'} • {period.months} мес.
+              {period.discount > 0 && ` • скидка ${period.discount}%`}
+            </p>
+          </div>
 
+          {/* Comment */}
           <div className="space-y-2">
             <Label>Комментарий (опционально)</Label>
             <Textarea
@@ -276,9 +281,9 @@ export function ExtendSubscriptionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || !selectedPlanId}>
+          <Button onClick={handleSubmit} disabled={loading}>
             <Plus className="h-4 w-4 mr-2" />
-            {loading ? 'Обновление...' : 'Продлить'}
+            {loading ? 'Обновление...' : `Продлить — ${formatPrice(price.total)} so'm`}
           </Button>
         </DialogFooter>
       </DialogContent>
