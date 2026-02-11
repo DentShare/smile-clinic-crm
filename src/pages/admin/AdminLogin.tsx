@@ -14,29 +14,52 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn, isSuperAdmin } = useAuth();
+  const [waitingForRole, setWaitingForRole] = useState(false);
+  const { signIn, signOut, isSuperAdmin, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const { user } = useAuth();
-
+  // Redirect when super admin confirmed
   useEffect(() => {
     if (user && isSuperAdmin) {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [user, isSuperAdmin, navigate]);
 
+  // Handle timeout when waiting for role check
+  useEffect(() => {
+    if (!waitingForRole) return;
+    if (isSuperAdmin) {
+      // Will be handled by redirect effect above
+      return;
+    }
+    // Give auth context time to load roles
+    const timeout = setTimeout(() => {
+      if (!isSuperAdmin) {
+        setError('У этого аккаунта нет прав Super Admin');
+        setWaitingForRole(false);
+        setIsLoading(false);
+        signOut();
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [waitingForRole, isSuperAdmin, signOut]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // Sign out any existing session first
+    await signOut();
+
     const { error: signInError } = await signIn(email, password);
     if (signInError) {
       setError('Неверные учетные данные');
       setIsLoading(false);
       return;
     }
-    // Auth state change will trigger redirect via useEffect
-    setTimeout(() => { setIsLoading(false); }, 3000);
+    // Wait for AuthContext to load roles
+    setWaitingForRole(true);
   };
 
   return (
