@@ -62,10 +62,14 @@ export const Sidebar = () => {
   const location = useLocation();
   const { profile, clinic, isSuperAdmin, signOut, hasRole } = useAuth();
 
-  const navItems = isSuperAdmin ? superAdminNavItems : clinicNavItems;
+  // In the CRM layout (DashboardLayout), always show clinic navigation
+  // Super admin nav is only used inside the AdminLayout
+  const navItems = clinicNavItems;
 
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true;
+    // Super admins in CRM context can see everything
+    if (isSuperAdmin) return true;
     return item.roles.some(role => hasRole(role as any));
   });
 
