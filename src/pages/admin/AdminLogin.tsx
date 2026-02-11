@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,35 +13,31 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isSuperAdmin, user } = useAuth();
   const navigate = useNavigate();
 
-  // If already logged in as super admin, redirect
+  // On mount, check if already logged in as super_admin — no AuthContext dependency
   useEffect(() => {
-    if (user && isSuperAdmin) {
-      navigate('/admin/dashboard', { replace: true });
-    }
-  }, [user, isSuperAdmin, navigate]);
-
-  // Clear any stale session on mount to prevent auth errors
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        // If there's a session but user isn't super admin, sign out to start fresh
-        supabase.from('user_roles')
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
           .eq('role', 'super_admin')
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) {
-              navigate('/admin/dashboard', { replace: true });
-            }
-          });
+          .maybeSingle();
+        if (!cancelled && data) {
+          navigate('/admin/dashboard', { replace: true });
+          return;
+        }
       }
+      if (!cancelled) setCheckingSession(false);
     });
-  }, []);
+    return () => { cancelled = true; };
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +75,14 @@ const AdminLogin = () => {
       setIsLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="dark flex min-h-screen items-center justify-center bg-background p-4">
