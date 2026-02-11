@@ -21,6 +21,8 @@ import type { Profile } from '@/types/database';
 
 type AppRole = 'clinic_admin' | 'doctor' | 'reception' | 'nurse';
 
+const fallbackRoleConfig = { label: 'Роль', icon: Shield, color: 'bg-muted text-muted-foreground', description: 'Неизвестная роль', permissions: [] };
+
 interface StaffMember extends Profile {
   roles: AppRole[];
   email?: string;
@@ -621,7 +623,7 @@ export function StaffManagement() {
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {member.roles.map((role) => {
-                                const config = roleConfig[role];
+                                const config = roleConfig[role] || fallbackRoleConfig;
                                 return (
                                   <Badge key={role} className={config.color}>
                                     {config.label}
@@ -695,7 +697,7 @@ export function StaffManagement() {
                 </TableHeader>
                 <TableBody>
                   {invitations.map((invitation) => {
-                    const config = roleConfig[invitation.role];
+                    const config = roleConfig[invitation.role] || fallbackRoleConfig;
                     const Icon = config.icon;
                     
                     return (
