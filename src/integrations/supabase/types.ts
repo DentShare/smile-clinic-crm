@@ -451,33 +451,39 @@ export type Database = {
       }
       clinic_subscriptions: {
         Row: {
+          billing_period_months: number | null
           clinic_id: string
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          max_doctors_override: number | null
           plan_id: string
           status: string | null
           trial_ends_at: string | null
           updated_at: string | null
         }
         Insert: {
+          billing_period_months?: number | null
           clinic_id: string
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          max_doctors_override?: number | null
           plan_id: string
           status?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          billing_period_months?: number | null
           clinic_id?: string
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          max_doctors_override?: number | null
           plan_id?: string
           status?: string | null
           trial_ends_at?: string | null
