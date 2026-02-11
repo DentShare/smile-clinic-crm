@@ -635,20 +635,20 @@ export function StaffManagement() {
                               value={member.roles[0] || 'doctor'}
                               onValueChange={(value) => handleChangeRole(member, value as AppRole)}
                             >
-                              <SelectTrigger className="w-[160px] h-8">
+                              <SelectTrigger className="w-[160px] h-8 truncate">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="w-[280px]">
                                 {availableRoles.map((role) => {
                                   const config = roleConfig[role];
                                   const Icon = config.icon;
                                   return (
                                     <SelectItem key={role} value={role}>
                                       <div className="flex items-center gap-2">
-                                        <Icon className="h-4 w-4" />
-                                        <div>
-                                          <span>{config.label}</span>
-                                          <span className="ml-2 text-xs text-muted-foreground">{config.description}</span>
+                                        <Icon className="h-4 w-4 shrink-0" />
+                                        <div className="flex flex-col">
+                                          <span className="font-medium">{config.label}</span>
+                                          <span className="text-xs text-muted-foreground leading-tight">{config.description}</span>
                                         </div>
                                       </div>
                                     </SelectItem>
