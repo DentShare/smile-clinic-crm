@@ -70,40 +70,23 @@ export const CreateClinicDialog = ({ open, onOpenChange, onSuccess }: CreateClin
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: ownerEmail, password: ownerPassword,
-        options: { data: { full_name: ownerName } },
+      const { data, error } = await supabase.functions.invoke('create-clinic', {
+        body: {
+          email: ownerEmail,
+          password: ownerPassword,
+          full_name: ownerName,
+          phone: ownerPhone,
+          clinic_name: clinicName,
+          subdomain,
+          country,
+          plan_index: selectedPlan,
+          period_months: period.months,
+          doctor_count: doctorCount,
+        },
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Не удалось создать пользователя');
 
-      const { data: clinicData, error: clinicError } = await supabase
-        .from('clinics').insert({ name: clinicName, subdomain, phone: ownerPhone, email: ownerEmail, owner_name: ownerName, country })
-        .select().single();
-      if (clinicError) throw clinicError;
-
-      const { error: profileError } = await supabase.from('profiles').insert({
-        user_id: authData.user.id, clinic_id: clinicData.id, full_name: ownerName, phone: ownerPhone,
-      });
-      if (profileError) throw profileError;
-
-      const { error: roleError } = await supabase.from('user_roles').insert({ user_id: authData.user.id, role: 'clinic_admin' });
-      if (roleError) throw roleError;
-
-      const { data: subPlans } = await supabase.from('subscription_plans').select('id, name').eq('is_active', true).order('price_monthly');
-      let planId: string | null = null;
-      if (subPlans && subPlans.length > 0) {
-        const planIndex = Math.min(selectedPlan, subPlans.length - 1);
-        planId = subPlans[planIndex].id;
-      }
-      if (planId) {
-        const periodEnd = new Date();
-        periodEnd.setMonth(periodEnd.getMonth() + period.months);
-        await supabase.from('clinic_subscriptions').insert({
-          clinic_id: clinicData.id, plan_id: planId, status: 'active',
-          current_period_start: new Date().toISOString(), current_period_end: periodEnd.toISOString(),
-        });
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success('Клиника создана', { description: `${clinicName} — ${ownerEmail}` });
       resetForm(); onOpenChange(false); onSuccess();
