@@ -192,59 +192,15 @@ const Dashboard = () => {
     notifyMinutesBefore: 15,
   });
 
-  if (isSuperAdmin) {
+  // Super admins without a clinic should go to admin panel
+  if (isSuperAdmin && !clinic) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Панель Super Admin</h1>
-          <p className="text-muted-foreground">Управление платформой DentaClinic</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Всего клиник</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">активных подписок</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">MRR</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0 сум</div>
-              <p className="text-xs text-muted-foreground">ежемесячный доход</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0%</div>
-              <p className="text-xs text-muted-foreground">отток за месяц</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Триальные</CardTitle>
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">на триале</p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <h1 className="text-2xl font-bold">Вы вошли как Super Admin</h1>
+        <p className="text-muted-foreground">У вас нет привязанной клиники для CRM.</p>
+        <Button asChild>
+          <Link to="/admin/dashboard">Перейти в панель Super Admin</Link>
+        </Button>
       </div>
     );
   }
