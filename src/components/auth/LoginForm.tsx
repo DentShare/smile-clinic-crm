@@ -19,18 +19,21 @@ export const LoginForm = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
-      toast.error('Ошибка входа', {
-        description: 'Неверный email или пароль'
-      });
-    } else {
-      toast.success('Добро пожаловать!');
-      navigate('/dashboard');
+      if (error) {
+        toast.error('Ошибка входа', {
+          description: 'Неверный email или пароль'
+        });
+      } else {
+        navigate('/dashboard');
+      }
+    } catch {
+      toast.error('Ошибка входа');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

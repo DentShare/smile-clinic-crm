@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,10 @@ const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [existingNonAdminUser, setExistingNonAdminUser] = useState(false);
   const navigate = useNavigate();
 
-  // On mount, check if already logged in as super_admin — no AuthContext dependency
+  // On mount, check if already logged in as super_admin
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -33,6 +34,10 @@ const AdminLogin = () => {
           navigate('/admin/dashboard', { replace: true });
           return;
         }
+        // User is logged in but NOT super_admin — show option to switch
+        if (!cancelled) {
+          setExistingNonAdminUser(true);
+        }
       }
       if (!cancelled) setCheckingSession(false);
     });
@@ -45,6 +50,12 @@ const AdminLogin = () => {
     setError(null);
 
     try {
+      // If a non-admin user is already logged in, sign them out first
+      // so we can sign in with admin credentials
+      if (existingNonAdminUser) {
+        await supabase.auth.signOut();
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError || !data.user) {
         setError('Неверные учетные данные');
@@ -52,7 +63,7 @@ const AdminLogin = () => {
         return;
       }
 
-      // Directly verify super_admin role using the authenticated session
+      // Directly verify super_admin role
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -61,8 +72,8 @@ const AdminLogin = () => {
         .maybeSingle();
 
       if (!roleData) {
-        setError('У этого аккаунта нет прав Super Admin');
-        await supabase.auth.signOut();
+        setError('У этого аккаунта нет прав Super Admin. Войдите с аккаунтом администратора.');
+        // Do NOT sign out — the user may want to go back to CRM
         setIsLoading(false);
         return;
       }
@@ -76,6 +87,13 @@ const AdminLogin = () => {
     }
   };
 
+  // Sign out current session and show login form
+  const handleSwitchAccount = async () => {
+    await supabase.auth.signOut();
+    setExistingNonAdminUser(false);
+    setError(null);
+  };
+
   if (checkingSession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -85,9 +103,7 @@ const AdminLogin = () => {
   }
 
   return (
-    <div className="dark flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZ2LTRoLTJ2NGgyem0tNiA2aC00di0yaDR2MnptMC02aC00di0yaDR2MnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20" />
-      
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
@@ -108,14 +124,25 @@ const AdminLogin = () => {
               </Alert>
             )}
 
+            {existingNonAdminUser && !error && (
+              <Alert className="border-primary/30 bg-primary/5">
+                <AlertDescription className="text-sm">
+                  Вы уже вошли в CRM. Для входа в Admin панель введите данные администратора или{' '}
+                  <button type="button" onClick={handleSwitchAccount} className="text-primary underline hover:no-underline">
+                    сменить аккаунт
+                  </button>.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="admin@dentaclinic.uz" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Label htmlFor="admin-email">Email</Label>
+              <Input id="admin-email" type="email" placeholder="admin@dentaclinic.uz" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Label htmlFor="admin-password">Пароль</Label>
+              <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
 
             <Button type="submit" className="w-full mt-6" size="lg" disabled={isLoading}>
@@ -126,9 +153,14 @@ const AdminLogin = () => {
               )}
             </Button>
 
-            <p className="text-center text-xs text-muted-foreground mt-4">
-              Доступ только для авторизованных администраторов платформы
-            </p>
+            <div className="flex justify-between items-center mt-4">
+              <Link to="/login" className="text-xs text-muted-foreground hover:text-primary">
+                ← Вернуться в CRM
+              </Link>
+              <p className="text-xs text-muted-foreground">
+                Только для администраторов
+              </p>
+            </div>
           </CardContent>
         </form>
       </Card>
