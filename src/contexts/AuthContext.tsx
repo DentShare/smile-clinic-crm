@@ -94,12 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Defer any Supabase reads to the next tick.
-        setTimeout(() => {
-          if (isMounted) {
-            fetchUserData(session.user.id);
-          }
-        }, 0);
+        fetchUserData(session.user.id);
       } else {
         setProfile(null);
         setClinic(null);
