@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_invitations ADD COLUMN specialization character varying DEFAULT NULL;

@@ -23,6 +23,19 @@ type AppRole = 'clinic_admin' | 'doctor' | 'reception' | 'nurse';
 
 const fallbackRoleConfig = { label: 'Роль', icon: Shield, color: 'bg-muted text-muted-foreground', description: 'Неизвестная роль', permissions: [] };
 
+const doctorSpecializations = [
+  'Терапевт',
+  'Ортопед',
+  'Гнатолог',
+  'Челюстно-лицевой хирург',
+  'Ортодонт',
+  'Детский стоматолог',
+  'Имплантолог',
+  'Эндодонтист',
+  'Гигиенист',
+  'Пародонтолог',
+];
+
 interface StaffMember extends Profile {
   roles: AppRole[];
   email?: string;
@@ -82,6 +95,7 @@ export function StaffManagement() {
   const [newInvite, setNewInvite] = useState({
     email: '',
     role: 'doctor' as AppRole,
+    specialization: '' as string,
   });
 
   const canManageStaff = isClinicAdmin || hasRole('reception');
@@ -234,6 +248,7 @@ export function StaffManagement() {
           clinicId: clinic.id,
           clinicName: clinic.name,
           inviterName: profile.full_name,
+          specialization: newInvite.role === 'doctor' ? newInvite.specialization : undefined,
         },
       });
 
@@ -244,7 +259,7 @@ export function StaffManagement() {
       });
 
       setIsDialogOpen(false);
-      setNewInvite({ email: '', role: 'doctor' });
+      setNewInvite({ email: '', role: 'doctor', specialization: '' });
       fetchInvitations();
     } catch (error: any) {
       console.error('Error sending invitation:', error);
@@ -506,7 +521,7 @@ export function StaffManagement() {
                     <Label htmlFor="role">Роль</Label>
                     <Select
                       value={newInvite.role}
-                      onValueChange={(value) => setNewInvite({ ...newInvite, role: value as AppRole })}
+                      onValueChange={(value) => setNewInvite({ ...newInvite, role: value as AppRole, specialization: value === 'doctor' ? newInvite.specialization : '' })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -533,6 +548,27 @@ export function StaffManagement() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {newInvite.role === 'doctor' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="specialization">Специализация</Label>
+                      <Select
+                        value={newInvite.specialization}
+                        onValueChange={(value) => setNewInvite({ ...newInvite, specialization: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите специализацию" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {doctorSpecializations.map((spec) => (
+                            <SelectItem key={spec} value={spec}>
+                              {spec}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter>

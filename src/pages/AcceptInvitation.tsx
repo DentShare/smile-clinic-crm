@@ -18,6 +18,7 @@ interface Invitation {
   clinic_id: string;
   expires_at: string;
   accepted_at: string | null;
+  specialization?: string | null;
   clinics?: { name: string };
 }
 
@@ -128,6 +129,7 @@ const AcceptInvitation = () => {
           user_id: authData.user.id,
           clinic_id: invitation.clinic_id,
           full_name: formData.fullName,
+          specialization: invitation.specialization || null,
         });
 
       if (profileError) throw profileError;

@@ -2091,6 +2091,7 @@ export type Database = {
           id: string
           invited_by: string
           role: Database["public"]["Enums"]["app_role"]
+          specialization: string | null
           token: string
         }
         Insert: {
@@ -2102,6 +2103,7 @@ export type Database = {
           id?: string
           invited_by: string
           role: Database["public"]["Enums"]["app_role"]
+          specialization?: string | null
           token: string
         }
         Update: {
@@ -2113,6 +2115,7 @@ export type Database = {
           id?: string
           invited_by?: string
           role?: Database["public"]["Enums"]["app_role"]
+          specialization?: string | null
           token?: string
         }
         Relationships: [
