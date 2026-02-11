@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,14 @@ const AdminLogin = () => {
   const { signIn, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
 
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user && isSuperAdmin) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, isSuperAdmin, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -27,14 +35,9 @@ const AdminLogin = () => {
       setIsLoading(false);
       return;
     }
-    setTimeout(() => { setIsLoading(false); }, 1500);
+    // Auth state change will trigger redirect via useEffect
+    setTimeout(() => { setIsLoading(false); }, 3000);
   };
-
-  const { user } = useAuth();
-  if (user && isSuperAdmin) {
-    navigate('/admin/dashboard', { replace: true });
-    return null;
-  }
 
   return (
     <div className="dark flex min-h-screen items-center justify-center bg-background p-4">

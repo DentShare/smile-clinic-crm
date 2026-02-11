@@ -41,61 +41,18 @@ export const RegisterForm = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Failed to create user');
 
-      // 2. Create clinic
-      const { data: clinicData, error: clinicError } = await supabase
-        .from('clinics')
-        .insert({
-          name: clinicName,
-          subdomain,
-          phone,
-          email
-        })
-        .select()
-        .single();
-
-      if (clinicError) throw clinicError;
-
-      // 3. Create profile with clinic reference
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          clinic_id: clinicData.id,
-          full_name: fullName,
-          phone
+      // 2. Register clinic atomically via security definer function
+      const { data: clinicId, error: registerError } = await supabase
+        .rpc('register_clinic', {
+          _user_id: authData.user.id,
+          _clinic_name: clinicName,
+          _subdomain: subdomain,
+          _phone: phone,
+          _email: email,
+          _full_name: fullName
         });
 
-      if (profileError) throw profileError;
-
-      // 4. Assign clinic_admin role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'clinic_admin'
-        });
-
-      if (roleError) throw roleError;
-
-      // 5. Get starter plan and create subscription
-      const { data: starterPlan } = await supabase
-        .from('subscription_plans')
-        .select('id')
-        .eq('name', 'Starter')
-        .maybeSingle();
-
-      if (starterPlan) {
-        const trialEndsAt = new Date();
-        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
-        await supabase.from('clinic_subscriptions').insert({
-          clinic_id: clinicData.id,
-          plan_id: starterPlan.id,
-          status: 'trial',
-          trial_ends_at: trialEndsAt.toISOString(),
-          current_period_end: trialEndsAt.toISOString()
-        });
-      }
+      if (registerError) throw registerError;
 
       toast.success('Клиника зарегистрирована!', {
         description: 'Добро пожаловать в DentaClinic'
