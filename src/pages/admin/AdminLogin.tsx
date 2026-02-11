@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,52 +15,70 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [waitingForRole, setWaitingForRole] = useState(false);
-  const { signIn, signOut, isSuperAdmin, user, isLoading: authLoading } = useAuth();
+  const { isSuperAdmin, user } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect when super admin confirmed
+  // If already logged in as super admin, redirect
   useEffect(() => {
     if (user && isSuperAdmin) {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [user, isSuperAdmin, navigate]);
 
-  // Handle timeout when waiting for role check
+  // Clear any stale session on mount to prevent auth errors
   useEffect(() => {
-    if (!waitingForRole) return;
-    if (isSuperAdmin) {
-      // Will be handled by redirect effect above
-      return;
-    }
-    // Give auth context time to load roles
-    const timeout = setTimeout(() => {
-      if (!isSuperAdmin) {
-        setError('У этого аккаунта нет прав Super Admin');
-        setWaitingForRole(false);
-        setIsLoading(false);
-        signOut();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // If there's a session but user isn't super admin, sign out to start fresh
+        supabase.from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'super_admin')
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              navigate('/admin/dashboard', { replace: true });
+            }
+          });
       }
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [waitingForRole, isSuperAdmin, signOut]);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    // Sign out any existing session first
-    await signOut();
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError || !data.user) {
+        setError('Неверные учетные данные');
+        setIsLoading(false);
+        return;
+      }
 
-    const { error: signInError } = await signIn(email, password);
-    if (signInError) {
-      setError('Неверные учетные данные');
+      // Directly verify super_admin role using the authenticated session
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+
+      if (!roleData) {
+        setError('У этого аккаунта нет прав Super Admin');
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Добро пожаловать, Admin!');
+      navigate('/admin/dashboard', { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Ошибка входа');
+    } finally {
       setIsLoading(false);
-      return;
     }
-    // Wait for AuthContext to load roles
-    setWaitingForRole(true);
   };
 
   return (
