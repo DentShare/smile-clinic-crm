@@ -47,7 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profileData) {
-        setProfile(profileData as Profile);
+        const mappedProfile: Profile = {
+          ...profileData,
+          is_active: profileData.is_active ?? true,
+          created_at: profileData.created_at ?? new Date().toISOString(),
+          updated_at: profileData.updated_at ?? new Date().toISOString(),
+        };
+        setProfile(mappedProfile);
 
         // Fetch clinic if user belongs to one
         if (profileData.clinic_id) {
