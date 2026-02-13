@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useState } from 'react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const DashboardLayout = () => {
   const [language, setLanguage] = useState<'uz' | 'ru'>('ru');
@@ -18,7 +19,9 @@ export const DashboardLayout = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           <div className="container py-4 h-full">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

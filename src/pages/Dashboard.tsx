@@ -33,7 +33,7 @@ import { useAppointmentNotifications } from '@/hooks/use-appointment-notificatio
 
 
 const Dashboard = () => {
-  const { clinic, profile, isSuperAdmin } = useAuth();
+  const { clinic, profile, isSuperAdmin, isLoading: authLoading } = useAuth();
   const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [appointments, setAppointments] = useState<(Appointment & { patient: Patient; doctor?: Profile })[]>([]);
@@ -83,7 +83,9 @@ const Dashboard = () => {
     if (error) {
       console.error('Error fetching appointments:', error);
     } else {
-      setAppointments(data as any);
+      // Safely filter out appointments with missing patient data
+      const safeData = (data || []).filter((a: any) => a && a.patient);
+      setAppointments(safeData as any);
     }
     setIsLoading(false);
   };
@@ -201,6 +203,15 @@ const Dashboard = () => {
         <Button asChild>
           <Link to="/admin/dashboard">Перейти в панель Super Admin</Link>
         </Button>
+      </div>
+    );
+  }
+
+  // Guard against missing data during loading
+  if (!clinic || !profile) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
