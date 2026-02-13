@@ -1,23 +1,33 @@
-// Runtime-safe Supabase client.
+// Secure Supabase client configuration.
 //
-// Why: in some preview/build environments `import.meta.env.VITE_SUPABASE_URL` may be undefined,
-// which causes `createClient()` to throw `supabaseUrl is required`.
+// IMPORTANT: Environment variables MUST be set in .env file
+// This application will not start without proper Supabase credentials.
 //
-// We keep a fallback to the publishable (anon) credentials so the app can boot reliably.
-// Note: publishable/anon credentials are safe to ship to the client.
+// Required environment variables:
+// - VITE_SUPABASE_URL: Your Supabase project URL
+// - VITE_SUPABASE_PUBLISHABLE_KEY: Your Supabase anon/public key
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-const FALLBACK_SUPABASE_URL = "https://vdihwysnyyipkvaevzyp.supabase.co";
-const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaWh3eXNueXlpcGt2YWV2enlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjYwNDUsImV4cCI6MjA4NDU0MjA0NX0.dyn-L_k5Qvwc_oNgpReYUhrktBIHEoipFIoNcF17exk";
+// Get environment variables
+const SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-const SUPABASE_URL =
-  (import.meta as any)?.env?.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY =
-  (import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+// Validate that required environment variables are present
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  const missingVars = [];
+  if (!SUPABASE_URL) missingVars.push('VITE_SUPABASE_URL');
+  if (!SUPABASE_PUBLISHABLE_KEY) missingVars.push('VITE_SUPABASE_PUBLISHABLE_KEY');
+
+  throw new Error(
+    `Missing required environment variables: ${missingVars.join(', ')}.\n\n` +
+    `Please create a .env file in the project root with:\n` +
+    `VITE_SUPABASE_URL=your_supabase_url\n` +
+    `VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key\n\n` +
+    `See .env.example for reference.`
+  );
+}
 
 export const supabase = createClient<Database>(
   SUPABASE_URL,

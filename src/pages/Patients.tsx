@@ -45,57 +45,67 @@ const Patients = () => {
   const fetchPatients = async () => {
     if (!clinic?.id) return;
 
-    // If scoped to specific doctors, first get their patient IDs from appointments
-    if (effectiveDoctorIds !== null) {
-      if (effectiveDoctorIds.length === 0) {
-        setPatients([]);
-        setIsLoading(false);
-        return;
-      }
+    try {
+      // FIXED: Optimized to use a single query instead of N+1
+      if (effectiveDoctorIds !== null) {
+        if (effectiveDoctorIds.length === 0) {
+          setPatients([]);
+          setIsLoading(false);
+          return;
+        }
 
-      const { data: apptData } = await supabase
-        .from('appointments')
-        .select('patient_id')
-        .eq('clinic_id', clinic.id)
-        .in('doctor_id', effectiveDoctorIds);
+        // Use a single query with JOIN to get patients who have appointments with specific doctors
+        // This is more efficient than fetching appointments first, then fetching patients
+        const { data: appointmentsWithPatients, error } = await supabase
+          .from('appointments')
+          .select('patient:patients(*)')
+          .eq('clinic_id', clinic.id)
+          .in('doctor_id', effectiveDoctorIds);
 
-      const patientIds = [...new Set((apptData || []).map(a => a.patient_id))];
+        if (error) {
+          toast.error('Ошибка загрузки пациентов');
+          console.error('[Patients] Error fetching patients with JOIN:', error);
+          setPatients([]);
+        } else {
+          // Extract unique patients from the joined data
+          const patientsMap = new Map();
+          (appointmentsWithPatients || []).forEach((appt: any) => {
+            if (appt.patient && appt.patient.id) {
+              patientsMap.set(appt.patient.id, appt.patient);
+            }
+          });
 
-      if (patientIds.length === 0) {
-        setPatients([]);
-        setIsLoading(false);
-        return;
-      }
+          // Convert map to array and sort by created_at
+          const uniquePatients = Array.from(patientsMap.values()) as Patient[];
+          uniquePatients.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
 
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('clinic_id', clinic.id)
-        .in('id', patientIds)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        toast.error('Ошибка загрузки пациентов');
-        console.error(error);
+          setPatients(uniquePatients);
+        }
       } else {
-        setPatients(data as Patient[]);
-      }
-    } else {
-      // Full access - show all
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('clinic_id', clinic.id)
-        .order('created_at', { ascending: false });
+        // Full access - show all patients
+        const { data, error } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('clinic_id', clinic.id)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        toast.error('Ошибка загрузки пациентов');
-        console.error(error);
-      } else {
-        setPatients(data as Patient[]);
+        if (error) {
+          toast.error('Ошибка загрузки пациентов');
+          console.error('[Patients] Error fetching all patients:', error);
+          setPatients([]);
+        } else {
+          setPatients(data as Patient[]);
+        }
       }
+    } catch (err) {
+      console.error('[Patients] Unexpected error:', err);
+      toast.error('Неожиданная ошибка при загрузке пациентов');
+      setPatients([]);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {

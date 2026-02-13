@@ -114,35 +114,31 @@ export function StaffManagement() {
 
   const fetchStaff = async () => {
     if (!clinic?.id) return;
-    
+
     try {
+      // FIXED: Use JOIN to fetch profiles with roles in a single query
+      // This eliminates the N+1 query problem
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          user_roles!user_roles_user_id_fkey(role)
+        `)
         .eq('clinic_id', clinic.id)
         .order('full_name');
 
       if (profilesError) throw profilesError;
 
-      const staffWithRoles: StaffMember[] = [];
-      
-      for (const p of profiles || []) {
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', p.user_id);
-        
-        // Get email from auth.users via a database function would be ideal,
-        // but for now we'll just show the phone as contact
-        staffWithRoles.push({
-          ...p,
-          roles: (roles || []).map(r => r.role as AppRole),
-        });
-      }
+      // Transform the data to match StaffMember interface
+      const staffWithRoles: StaffMember[] = (profiles || []).map(p => ({
+        ...p,
+        roles: (p.user_roles || []).map((r: any) => r.role as AppRole),
+        user_roles: undefined, // Remove the nested user_roles to match interface
+      })) as StaffMember[];
 
       setStaff(staffWithRoles);
     } catch (error) {
-      console.error('Error fetching staff:', error);
+      console.error('[StaffManagement] Error fetching staff:', error);
     }
   };
 

@@ -6,7 +6,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
+
+/**
+ * Helper component to display password requirement with check/x icon
+ */
+const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+  <div className={`flex items-center gap-1.5 ${met ? 'text-green-600' : 'text-muted-foreground'}`}>
+    {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+    <span>{text}</span>
+  </div>
+);
+
+/**
+ * Validates password strength
+ * Returns an object with validation results for each requirement
+ */
+const validatePassword = (password: string) => {
+  return {
+    minLength: password.length >= 12,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  };
+};
 
 export const RegisterForm = () => {
   const [clinicName, setClinicName] = useState('');
@@ -18,6 +42,10 @@ export const RegisterForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Password validation state
+  const passwordValidation = validatePassword(password);
+  const isPasswordValid = Object.values(passwordValidation).every(v => v);
+
   const handleSubdomainChange = (value: string) => {
     // Only allow lowercase letters, numbers, and hyphens
     const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -26,6 +54,13 @@ export const RegisterForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate password before submission
+    if (!isPasswordValid) {
+      toast.error('Пароль не соответствует требованиям безопасности');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -145,8 +180,36 @@ export const RegisterForm = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={12}
+              className={password && !isPasswordValid ? 'border-destructive' : ''}
             />
+            {password && (
+              <div className="text-xs space-y-1 mt-2">
+                <p className="font-medium text-muted-foreground mb-1">Требования к паролю:</p>
+                <div className="space-y-0.5">
+                  <PasswordRequirement
+                    met={passwordValidation.minLength}
+                    text="Минимум 12 символов"
+                  />
+                  <PasswordRequirement
+                    met={passwordValidation.hasUppercase}
+                    text="Заглавная буква (A-Z)"
+                  />
+                  <PasswordRequirement
+                    met={passwordValidation.hasLowercase}
+                    text="Строчная буква (a-z)"
+                  />
+                  <PasswordRequirement
+                    met={passwordValidation.hasNumber}
+                    text="Цифра (0-9)"
+                  />
+                  <PasswordRequirement
+                    met={passwordValidation.hasSpecial}
+                    text="Специальный символ (!@#$%^&*...)"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
