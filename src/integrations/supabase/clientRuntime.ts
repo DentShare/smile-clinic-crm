@@ -11,8 +11,8 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 // Get environment variables
-const SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Validate that required environment variables are present
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

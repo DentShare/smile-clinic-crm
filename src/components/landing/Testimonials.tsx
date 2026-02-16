@@ -52,7 +52,7 @@ export const Testimonials = () => {
             Нам доверяют клиники по всей стране
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Отзывы врачей и владельцев клиник, которые уже используют DentaClinic
+            Отзывы врачей и владельцев клиник, которые уже используют Dentelica
           </p>
         </div>
 

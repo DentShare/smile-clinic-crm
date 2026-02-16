@@ -114,7 +114,8 @@ export function ScheduleGrid({
     const oldEnd = new Date(appointment.end_time);
     const duration = oldEnd.getTime() - oldStart.getTime();
 
-    const newStart = setMinutes(setHours(new Date(selectedDate), hour), 0);
+    const originalMinutes = oldStart.getMinutes();
+    const newStart = setMinutes(setHours(new Date(selectedDate), hour), originalMinutes);
     const newEnd = new Date(newStart.getTime() + duration);
 
     // Don't update if dropped on same time

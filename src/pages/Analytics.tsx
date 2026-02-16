@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis } from 'recharts';
-import { TrendingUp, TrendingDown, Users, Calendar, Percent, Loader2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, Users, Calendar, Percent, Loader2, DollarSign, AlertTriangle, Download } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useExcelExport } from '@/hooks/use-excel-export';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { useClinicAnalytics } from '@/hooks/use-clinic-analytics';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -15,7 +21,8 @@ type DateRange = 'week' | 'month' | 'quarter';
 
 const Analytics = () => {
   const [dateRange, setDateRange] = useState<DateRange>('week');
-  const { revenueData, conversionData, servicesData, kpis, isLoading } = useClinicAnalytics(dateRange);
+  const { revenueData, conversionData, servicesData, paymentMethods, debtors, kpis, isLoading } = useClinicAnalytics(dateRange);
+  const { exportRevenueReport } = useExcelExport();
 
   const dateRangeLabels: Record<DateRange, string> = {
     week: 'За неделю',
@@ -38,20 +45,36 @@ const Analytics = () => {
           <h1 className="text-3xl font-bold">Аналитика</h1>
           <p className="text-muted-foreground">Статистика и отчёты клиники</p>
         </div>
-        <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">За неделю</SelectItem>
-            <SelectItem value="month">За месяц</SelectItem>
-            <SelectItem value="quarter">За квартал</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">За неделю</SelectItem>
+              <SelectItem value="month">За месяц</SelectItem>
+              <SelectItem value="quarter">За квартал</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" title="Экспорт выручки в Excel" onClick={() => exportRevenueReport(revenueData)}>
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Выручка</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(kpis.totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground">{dateRangeLabels[dateRange].toLowerCase()}</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Конверсия</CardTitle>
@@ -167,15 +190,15 @@ const Analytics = () => {
                 <BarChart data={servicesData} layout="vertical">
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={150} />
-                  <ChartTooltip 
+                  <ChartTooltip
                     content={
-                      <ChartTooltipContent 
+                      <ChartTooltipContent
                         formatter={(value, name) => {
                           if (name === 'value') return [`${value} шт.`, 'Количество'];
                           return [formatCurrency(Number(value)), 'Выручка'];
-                        }} 
+                        }}
                       />
-                    } 
+                    }
                   />
                   <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -183,6 +206,99 @@ const Analytics = () => {
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 Нет данных за выбранный период
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payment Methods & Debtors */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Способы оплаты</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {paymentMethods.length > 0 ? (
+              <div className="flex items-center gap-6">
+                <ChartContainer config={chartConfig} className="h-[250px] w-[250px] flex-shrink-0">
+                  <PieChart>
+                    <Pie
+                      data={paymentMethods}
+                      dataKey="value"
+                      nameKey="label"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={2}
+                    >
+                      {paymentMethods.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} />}
+                    />
+                  </PieChart>
+                </ChartContainer>
+                <div className="space-y-2 flex-1 min-w-0">
+                  {paymentMethods.map((method) => (
+                    <div key={method.method} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: method.color }} />
+                        <span className="text-sm truncate">{method.label}</span>
+                      </div>
+                      <span className="text-sm font-medium flex-shrink-0">{formatCurrency(method.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                Нет данных за выбранный период
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Должники
+              {debtors.length > 0 && (
+                <Badge variant="destructive" className="ml-2">{debtors.length}</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {debtors.length > 0 ? (
+              <div className="max-h-[300px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Пациент</TableHead>
+                      <TableHead>Телефон</TableHead>
+                      <TableHead className="text-right">Долг</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {debtors.map((debtor) => (
+                      <TableRow key={debtor.id}>
+                        <TableCell className="font-medium">{debtor.full_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{debtor.phone || '—'}</TableCell>
+                        <TableCell className="text-right text-destructive font-medium">
+                          {formatCurrency(Math.abs(debtor.balance))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                Должников нет
               </div>
             )}
           </CardContent>

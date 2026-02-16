@@ -59,7 +59,7 @@ export const AdminLayout = () => {
           </div>
           <div>
             <span className="font-semibold text-foreground">Super Admin</span>
-            <p className="text-xs text-muted-foreground">DentaClinic Platform</p>
+            <p className="text-xs text-muted-foreground">Dentelica Platform</p>
           </div>
         </div>
 

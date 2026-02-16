@@ -139,7 +139,7 @@ export function useSuperAdminData() {
       .lte('created_at', lastMonthEnd.toISOString())
       .eq('status', 'paid');
     
-    const lastMonthMRR = lastMonthBilling?.reduce((sum, b) => sum + Number(b.amount), 0) || mrr * 0.9;
+    const lastMonthMRR = lastMonthBilling?.reduce((sum, b) => sum + Number(b.amount), 0) ?? mrr * 0.9;
     const mrrGrowth = lastMonthMRR > 0 ? ((mrr - lastMonthMRR) / lastMonthMRR) * 100 : 0;
     
     setKpis({

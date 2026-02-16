@@ -149,5 +149,73 @@ export const useExcelExport = () => {
     exportToExcel(alerts, columns, 'alerts_export');
   }, [exportToExcel]);
 
-  return { exportToExcel, exportClinics, exportPayments, exportAlerts };
+  const exportClinicPayments = useCallback((payments: any[]) => {
+    const columns: ExportColumn[] = [
+      { key: 'created_at', header: 'Дата', formatter: (v) => v ? format(new Date(v), 'dd.MM.yyyy HH:mm') : '' },
+      { key: 'patient_name', header: 'Пациент' },
+      { key: 'amount', header: 'Сумма' },
+      { key: 'payment_method', header: 'Способ оплаты', formatter: (v) => {
+        const map: Record<string, string> = { cash: 'Наличные', uzcard: 'UzCard', humo: 'Humo', click: 'Click', payme: 'Payme', visa: 'Visa', transfer: 'Перевод', card: 'Карта' };
+        return map[v] || v || '';
+      }},
+      { key: 'is_fiscalized', header: 'Фискализирован', formatter: (v) => v ? 'Да' : 'Нет' },
+      { key: 'notes', header: 'Комментарий' },
+    ];
+    exportToExcel(payments, columns, 'платежи');
+  }, [exportToExcel]);
+
+  const exportPatientsList = useCallback((patients: any[]) => {
+    const columns: ExportColumn[] = [
+      { key: 'full_name', header: 'ФИО' },
+      { key: 'phone', header: 'Телефон' },
+      { key: 'birth_date', header: 'Дата рождения', formatter: (v) => v ? format(new Date(v), 'dd.MM.yyyy') : '' },
+      { key: 'gender', header: 'Пол', formatter: (v) => v === 'male' ? 'Муж' : v === 'female' ? 'Жен' : '' },
+      { key: 'balance', header: 'Баланс' },
+      { key: 'source', header: 'Источник' },
+      { key: 'created_at', header: 'Дата регистрации', formatter: (v) => v ? format(new Date(v), 'dd.MM.yyyy') : '' },
+    ];
+    exportToExcel(patients, columns, 'пациенты');
+  }, [exportToExcel]);
+
+  const exportAppointments = useCallback((appointments: any[]) => {
+    const columns: ExportColumn[] = [
+      { key: 'start_time', header: 'Дата и время', formatter: (v) => v ? format(new Date(v), 'dd.MM.yyyy HH:mm') : '' },
+      { key: 'patient_name', header: 'Пациент' },
+      { key: 'doctor_name', header: 'Врач' },
+      { key: 'service_name', header: 'Услуга' },
+      { key: 'status', header: 'Статус', formatter: (v) => {
+        const map: Record<string, string> = { scheduled: 'Запланирован', confirmed: 'Подтверждён', completed: 'Завершён', cancelled: 'Отменён', no_show: 'Не пришёл' };
+        return map[v] || v || '';
+      }},
+    ];
+    exportToExcel(appointments, columns, 'приёмы');
+  }, [exportToExcel]);
+
+  const exportInventory = useCallback((items: any[]) => {
+    const columns: ExportColumn[] = [
+      { key: 'name', header: 'Название' },
+      { key: 'sku', header: 'Артикул' },
+      { key: 'category', header: 'Категория' },
+      { key: 'quantity', header: 'Остаток' },
+      { key: 'unit', header: 'Ед. изм.' },
+      { key: 'min_quantity', header: 'Мин. остаток' },
+      { key: 'price', header: 'Цена' },
+    ];
+    exportToExcel(items, columns, 'склад');
+  }, [exportToExcel]);
+
+  const exportRevenueReport = useCallback((data: any[]) => {
+    const columns: ExportColumn[] = [
+      { key: 'date', header: 'Дата' },
+      { key: 'name', header: 'День' },
+      { key: 'value', header: 'Выручка (so\'m)' },
+    ];
+    exportToExcel(data, columns, 'выручка');
+  }, [exportToExcel]);
+
+  return {
+    exportToExcel, exportClinics, exportPayments, exportAlerts,
+    exportClinicPayments, exportPatientsList, exportAppointments,
+    exportInventory, exportRevenueReport,
+  };
 };

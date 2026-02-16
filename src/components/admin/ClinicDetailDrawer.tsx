@@ -199,7 +199,7 @@ export function ClinicDetailDrawer({
               <SheetTitle>{clinic.name}</SheetTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
-                {clinic.subdomain}.dent-crm.uz
+                {clinic.subdomain}.dentelica.uz
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRateLimit } from '@/hooks/use-rate-limit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,22 +15,42 @@ export const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { checkLimit, recordAttempt, reset } = useRateLimit({
+    maxAttempts: 5,
+    windowMs: 60_000,
+    lockoutMs: 300_000,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const { allowed, retryAfterMs } = checkLimit();
+    if (!allowed) {
+      const minutes = Math.ceil(retryAfterMs / 60_000);
+      toast.error('Слишком много попыток', {
+        description: `Попробуйте снова через ${minutes} мин.`,
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const { error } = await signIn(email, password);
 
       if (error) {
+        recordAttempt();
         toast.error('Ошибка входа', {
           description: 'Неверный email или пароль'
         });
       } else {
-        navigate('/dashboard');
+        reset();
+        const from = (location.state as any)?.from?.pathname || '/dashboard';
+        navigate(from);
       }
     } catch {
+      recordAttempt();
       toast.error('Ошибка входа');
     } finally {
       setIsLoading(false);
@@ -39,7 +60,7 @@ export const LoginForm = () => {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">🦷 DentaClinic</CardTitle>
+        <CardTitle className="text-2xl font-bold">Dentelica</CardTitle>
         <CardDescription>Войдите в свой аккаунт</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -56,7 +77,12 @@ export const LoginForm = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Пароль</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Пароль</Label>
+              <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
+                Забыли пароль?
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"

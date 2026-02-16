@@ -173,7 +173,7 @@ export function TenantsTable({
                         <div className="font-medium">{clinic.name}</div>
                         <div className="text-xs text-muted-foreground flex items-center gap-1">
                           <ExternalLink className="h-3 w-3" />
-                          {clinic.subdomain}.dent-crm.uz
+                          {clinic.subdomain}.dentelica.uz
                         </div>
                       </div>
                     </TableCell>

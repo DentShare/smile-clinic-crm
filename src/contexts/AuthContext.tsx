@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import type { AppRole, Profile, Clinic } from '@/types/database';
@@ -13,10 +13,13 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isClinicAdmin: boolean;
   isDoctor: boolean;
+  isImpersonating: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
+  startImpersonation: (clinicId: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,8 +39,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [impersonatedClinic, setImpersonatedClinic] = useState<Clinic | null>(null);
+  const fetchingForUserRef = useRef<string | null>(null);
 
   const fetchUserData = async (userId: string) => {
+    if (fetchingForUserRef.current === userId) return;
+    fetchingForUserRef.current = userId;
     try {
       // Fetch profile
       const { data: profileData } = await supabase
@@ -87,6 +94,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+    } finally {
+      fetchingForUserRef.current = null;
     }
   };
 
@@ -108,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Get initial session — keep isLoading true until fetchUserData finishes
+    // Get initial session — onAuthStateChange handles fetchUserData
     supabase.auth
       .getSession()
       .then(async ({ data: { session } }) => {
@@ -116,6 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
 
+        // fetchUserData is triggered by onAuthStateChange INITIAL_SESSION event
+        // Only call it here if the subscription hasn't already
         if (session?.user) {
           await fetchUserData(session.user.id);
         }
@@ -164,20 +175,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasRole = (role: AppRole) => roles.includes(role);
 
+  const startImpersonation = async (clinicId: string) => {
+    const { data: clinicData } = await supabase
+      .from('clinics')
+      .select('*')
+      .eq('id', clinicId)
+      .maybeSingle();
+
+    if (clinicData) {
+      const mappedClinic: Clinic = {
+        ...clinicData,
+        is_active: clinicData.is_active ?? true,
+        settings: clinicData.settings as Clinic['settings'],
+        created_at: clinicData.created_at ?? new Date().toISOString(),
+        updated_at: clinicData.updated_at ?? new Date().toISOString(),
+      };
+      setImpersonatedClinic(mappedClinic);
+
+      // Audit log: record impersonation start
+      await supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        clinic_id: clinicId,
+        action: 'IMPERSONATE_START',
+        table_name: 'clinics',
+        record_id: clinicId,
+        new_values: { clinic_name: clinicData.name },
+      });
+    }
+  };
+
+  const stopImpersonation = async () => {
+    const prevClinicId = impersonatedClinic?.id;
+    setImpersonatedClinic(null);
+
+    // Audit log: record impersonation stop
+    if (prevClinicId) {
+      await supabase.from('audit_logs').insert({
+        user_id: user?.id,
+        clinic_id: prevClinicId,
+        action: 'IMPERSONATE_STOP',
+        table_name: 'clinics',
+        record_id: prevClinicId,
+      });
+    }
+  };
+
+  const activeClinic = impersonatedClinic || clinic;
+
   const value: AuthContextType = {
     user,
     session,
     profile,
-    clinic,
+    clinic: activeClinic,
     roles,
     isLoading,
     isSuperAdmin: hasRole('super_admin'),
     isClinicAdmin: hasRole('clinic_admin'),
     isDoctor: hasRole('doctor'),
+    isImpersonating: !!impersonatedClinic,
     signIn,
     signUp,
     signOut,
-    hasRole
+    hasRole,
+    startImpersonation,
+    stopImpersonation,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

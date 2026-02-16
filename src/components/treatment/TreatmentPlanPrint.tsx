@@ -55,6 +55,10 @@ const TreatmentPlanPrint = forwardRef<HTMLDivElement, TreatmentPlanPrintProps>(
       return new Intl.NumberFormat('ru-RU').format(amount) + ' сум';
     };
 
+    if (!plan) {
+      return <div ref={ref} />;
+    }
+
     return (
       <div ref={ref} className="p-8 bg-white text-black min-h-[297mm] w-[210mm] mx-auto print:m-0 print:p-6">
         {/* Header */}

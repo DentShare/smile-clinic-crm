@@ -31,6 +31,7 @@ export function useDoctorSchedules() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchSchedules = async () => {
       if (!clinic?.id) return;
 
@@ -42,6 +43,7 @@ export function useDoctorSchedules() {
           .eq('clinic_id', clinic.id);
 
         if (error) throw error;
+        if (cancelled) return;
 
         const byDoctor: Record<string, DoctorDaySchedule[]> = {};
         const clinicDefault: DoctorDaySchedule[] = [];
@@ -68,13 +70,14 @@ export function useDoctorSchedules() {
         setSchedules(byDoctor);
         setClinicSchedule(clinicDefault);
       } catch (error) {
-        console.error('Error fetching doctor schedules:', error);
+        if (!cancelled) console.error('Error fetching doctor schedules:', error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchSchedules();
+    return () => { cancelled = true; };
   }, [clinic?.id]);
 
   /**

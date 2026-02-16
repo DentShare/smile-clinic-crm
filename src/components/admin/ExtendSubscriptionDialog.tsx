@@ -168,7 +168,7 @@ export function ExtendSubscriptionDialog({
           {/* Clinic info */}
           <div className="bg-muted/50 p-3 rounded-lg">
             <p className="font-medium">{clinic.name}</p>
-            <p className="text-sm text-muted-foreground">{clinic.subdomain}.dent-crm.uz</p>
+            <p className="text-sm text-muted-foreground">{clinic.subdomain}.dentelica.uz</p>
             {clinic.subscription && (
               <p className="text-xs text-muted-foreground mt-1">
                 Текущий: {clinic.subscription.plan_name_ru} — {clinic.subscription.status}

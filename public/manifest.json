@@ -1,0 +1,17 @@
+{
+  "name": "Dentelica CRM",
+  "short_name": "Dentelica",
+  "description": "CRM-система для стоматологических клиник",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -24,8 +24,10 @@ import {
   FileText,
   Phone,
   Target,
-  BarChart3
+  BarChart3,
+  Download
 } from 'lucide-react';
+import { useExcelExport } from '@/hooks/use-excel-export';
 import {
   AreaChart,
   Area,
@@ -73,6 +75,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 const Finance = () => {
   const { clinic } = useAuth();
   const { hasFullAccess, allStaff, selectedDoctorId, setSelectedDoctorId, effectiveDoctorIds, isLoading: scopeLoading } = useStaffScope();
+  const { exportRevenueReport } = useExcelExport();
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | '3months'>('month');
   
@@ -315,6 +318,7 @@ const Finance = () => {
           <h1 className="text-3xl font-bold">Финансы</h1>
           <p className="text-muted-foreground">Доходы, должники и прогноз выручки</p>
         </div>
+        <div className="flex items-center gap-2">
         <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
@@ -325,6 +329,10 @@ const Finance = () => {
             <SelectItem value="3months">3 месяца</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" size="icon" title="Экспорт в Excel" onClick={() => exportRevenueReport(incomeData)}>
+          <Download className="h-4 w-4" />
+        </Button>
+        </div>
       </div>
 
       {/* Doctor filter tabs (for admin/director) */}

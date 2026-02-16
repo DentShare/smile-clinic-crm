@@ -90,7 +90,7 @@ export const RegisterForm = () => {
       if (registerError) throw registerError;
 
       toast.success('Клиника зарегистрирована!', {
-        description: 'Добро пожаловать в DentaClinic'
+        description: 'Добро пожаловать в Dentelica'
       });
       navigate('/dashboard');
     } catch (error: any) {
@@ -133,7 +133,7 @@ export const RegisterForm = () => {
                 required
                 className="flex-1"
               />
-              <span className="text-sm text-muted-foreground">.dent-crm.uz</span>
+              <span className="text-sm text-muted-foreground">.dentelica.uz</span>
             </div>
           </div>
 

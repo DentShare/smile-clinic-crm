@@ -203,7 +203,7 @@ export function AppointmentQuickView({
             )}
           </div>
 
-          {appointment.status === 'scheduled' || appointment.status === 'confirmed' ? (
+          {(appointment.status === 'scheduled' || appointment.status === 'confirmed') ? (
             <Button
               size="sm"
               variant="secondary"

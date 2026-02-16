@@ -111,7 +111,7 @@ const AdminLogin = () => {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Super Admin Portal</CardTitle>
-            <CardDescription>Панель управления платформой DentaClinic</CardDescription>
+            <CardDescription>Панель управления платформой Dentelica</CardDescription>
           </div>
         </CardHeader>
 
@@ -137,7 +137,7 @@ const AdminLogin = () => {
 
             <div className="space-y-2">
               <Label htmlFor="admin-email">Email</Label>
-              <Input id="admin-email" type="email" placeholder="admin@dentaclinic.uz" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input id="admin-email" type="email" placeholder="admin@dentelica.uz" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
 
             <div className="space-y-2">

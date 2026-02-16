@@ -99,7 +99,7 @@ serve(async (req) => {
 
     // Send email
     const emailResult = await resend.emails.send({
-      from: "DentalCRM <onboarding@resend.dev>",
+      from: "Dentelica <onboarding@resend.dev>",
       to: [email],
       subject: `Приглашение в клинику ${clinicName}`,
       html: `
@@ -118,7 +118,7 @@ serve(async (req) => {
         </head>
         <body>
           <div class="header">
-            <h1>🦷 Приглашение в DentalCRM</h1>
+            <h1>🦷 Приглашение в Dentelica</h1>
           </div>
           <div class="content">
             <p>Здравствуйте!</p>
@@ -133,7 +133,7 @@ serve(async (req) => {
             </p>
           </div>
           <div class="footer">
-            <p>© ${new Date().getFullYear()} DentalCRM. Все права защищены.</p>
+            <p>© ${new Date().getFullYear()} Dentelica. Все права защищены.</p>
           </div>
         </body>
         </html>

@@ -50,7 +50,7 @@ export function DraggableAppointment({
 
   const status = statusConfig[appointment.status] || statusConfig.scheduled;
   const StatusIcon = status.icon;
-  const hasDebt = appointment.patient?.balance < 0;
+  const hasDebt = (appointment.patient?.balance ?? 0) < 0;
   const canDrag = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
   const canComplete = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
 

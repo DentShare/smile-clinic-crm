@@ -102,8 +102,14 @@ const AcceptInvitation = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Пароль должен содержать минимум 6 символов');
+    const isPasswordStrong = formData.password.length >= 12 &&
+      /[A-Z]/.test(formData.password) &&
+      /[a-z]/.test(formData.password) &&
+      /\d/.test(formData.password) &&
+      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password);
+
+    if (!isPasswordStrong) {
+      toast.error('Пароль должен содержать минимум 12 символов, включая заглавные и строчные буквы, цифры и спецсимволы');
       return;
     }
 

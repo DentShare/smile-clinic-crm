@@ -98,7 +98,7 @@ export function PatientFinanceTimeline({ patientId, maxHeight = '300px' }: Patie
                     className={`text-sm font-medium ${getEventTypeColor(entry.event_type)}`}
                   >
                     {entry.event_type === 'charge' || entry.event_type === 'refund'
-                      ? `-${formatCurrency(entry.amount, false)}`
+                      ? `-${formatCurrency(Math.abs(entry.amount), false)}`
                       : `+${formatCurrency(entry.amount, false)}`}
                   </span>
                 </div>

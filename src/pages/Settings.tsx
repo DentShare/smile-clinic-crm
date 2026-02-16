@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Loader2, Clock, FileText, MessageCircle } from 'lucide-react';
+import { Building2, Users, CreditCard, Loader2, Clock, FileText, MessageCircle, Receipt } from 'lucide-react';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { DocumentTemplatesSettings } from '@/components/settings/DocumentTemplatesSettings';
 import { AssistantDoctorLinks } from '@/components/settings/AssistantDoctorLinks';
 import { MessengerSettings } from '@/components/settings/MessengerSettings';
+import { FiscalSettings } from '@/components/settings/FiscalSettings';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -82,6 +83,10 @@ const Settings = () => {
           <TabsTrigger value="messengers">
             <MessageCircle className="mr-2 h-4 w-4" />
             Мессенджеры
+          </TabsTrigger>
+          <TabsTrigger value="fiscal">
+            <Receipt className="mr-2 h-4 w-4" />
+            Фискализация
           </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="mr-2 h-4 w-4" />
@@ -154,6 +159,10 @@ const Settings = () => {
 
         <TabsContent value="messengers" className="mt-6">
           <MessengerSettings />
+        </TabsContent>
+
+        <TabsContent value="fiscal" className="mt-6">
+          <FiscalSettings />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6">

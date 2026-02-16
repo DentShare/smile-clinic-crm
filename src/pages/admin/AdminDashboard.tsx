@@ -21,14 +21,18 @@ import {
   Building2,
   Loader2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/clientRuntime';
 import type { ClinicTenant } from '@/types/superAdmin';
 
 const AdminDashboard = () => {
   const { clinics, kpis, acquisitionData, loading, refresh } = useSuperAdminData();
   const { alerts } = useAdminAlerts();
   const { exportClinics, exportAlerts } = useExcelExport();
+  const { startImpersonation } = useAuth();
+  const navigate = useNavigate();
   const [selectedClinic, setSelectedClinic] = useState<ClinicTenant | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
@@ -41,8 +45,10 @@ const AdminDashboard = () => {
     setDrawerOpen(true);
   };
 
-  const handleLoginAsClinic = (_clinic: ClinicTenant) => {
-    toast.info('Функция "Войти как клиника" в разработке');
+  const handleLoginAsClinic = async (clinic: ClinicTenant) => {
+    await startImpersonation(clinic.id);
+    toast.success(`Просмотр клиники: ${clinic.name}`);
+    navigate('/dashboard');
   };
 
   const handleExtendSubscription = (clinic: ClinicTenant) => {
@@ -51,7 +57,19 @@ const AdminDashboard = () => {
   };
 
   const handleBlockClinic = async (clinic: ClinicTenant) => {
-    toast.info(`${clinic.is_active ? 'Блокировка' : 'Разблокировка'} клиники ${clinic.name} в разработке`);
+    try {
+      const newStatus = !clinic.is_active;
+      const { error } = await supabase
+        .from('clinics')
+        .update({ is_active: newStatus })
+        .eq('id', clinic.id);
+      if (error) throw error;
+      toast.success(newStatus ? 'Клиника активирована' : 'Клиника приостановлена');
+      refresh();
+    } catch (error) {
+      console.error('Error toggling clinic:', error);
+      toast.error('Ошибка при изменении статуса');
+    }
   };
 
   if (loading) {
@@ -67,7 +85,7 @@ const AdminDashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Панель управления</h1>
-          <p className="text-muted-foreground">Обзор платформы DentaClinic</p>
+          <p className="text-muted-foreground">Обзор платформы Dentelica</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2" onClick={() => exportClinics(clinics)}>

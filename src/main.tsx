@@ -1,5 +1,9 @@
 import { createRoot } from "react-dom/client";
+import { initSentry } from "./lib/sentry";
 import "./index.css";
+
+// Initialize Sentry before anything else
+initSentry();
 
 const mount = async () => {
   const el = document.getElementById("root");

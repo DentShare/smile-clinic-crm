@@ -8,12 +8,16 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Download, Plus } from 'lucide-react';
 import { useExcelExport } from '@/hooks/use-excel-export';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/clientRuntime';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ClinicTenant } from '@/types/superAdmin';
 
 const AdminClinics = () => {
   const { clinics, loading, refresh } = useSuperAdminData();
   const { exportClinics } = useExcelExport();
+  const { startImpersonation } = useAuth();
+  const navigate = useNavigate();
   const [selectedClinic, setSelectedClinic] = useState<ClinicTenant | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [extendDialogOpen, setExtendDialogOpen] = useState(false);
@@ -25,8 +29,10 @@ const AdminClinics = () => {
     setDrawerOpen(true);
   };
 
-  const handleLoginAsClinic = (_clinic: ClinicTenant) => {
-    toast.info('Функция "Войти как клиника" в разработке');
+  const handleLoginAsClinic = async (clinic: ClinicTenant) => {
+    await startImpersonation(clinic.id);
+    toast.success(`Просмотр клиники: ${clinic.name}`);
+    navigate('/dashboard');
   };
 
   const handleExtendSubscription = (clinic: ClinicTenant) => {

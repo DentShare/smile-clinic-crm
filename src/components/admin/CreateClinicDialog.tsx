@@ -121,7 +121,7 @@ export const CreateClinicDialog = ({ open, onOpenChange, onSuccess }: CreateClin
                 <Label>Поддомен</Label>
                 <div className="flex items-center gap-2">
                   <Input value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="digital" required className="flex-1" />
-                  <span className="text-xs text-muted-foreground">.dent-crm.uz</span>
+                  <span className="text-xs text-muted-foreground">.dentelica.uz</span>
                 </div>
               </div>
             </div>

@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 import { Loader2, Gift, Wallet, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -57,7 +58,7 @@ export function PaymentDialog({
   ]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [currentIdempotencyKey] = useState<string>(() => crypto.randomUUID());
+  const [currentIdempotencyKey, setCurrentIdempotencyKey] = useState<string>(() => crypto.randomUUID());
   const { processPayment } = usePatientFinance(patientId);
 
   // Bonus & deposit balances
@@ -135,7 +136,7 @@ export function PaymentDialog({
     }
 
     if (totalAmount > 100000000) {
-      alert('Сумма платежа превышает максимально допустимую (100,000,000)');
+      toast.error('Сумма платежа превышает максимально допустимую (100,000,000)');
       return;
     }
 
@@ -145,11 +146,11 @@ export function PaymentDialog({
       if (amt > 0) {
         // Check if using bonus/deposit with sufficient balance
         if (line.method === 'bonus' && amt > bonusBalance) {
-          alert(`Недостаточно бонусов. Доступно: ${bonusBalance.toLocaleString('ru-RU')}`);
+          toast.error(`Недостаточно бонусов. Доступно: ${bonusBalance.toLocaleString('ru-RU')}`);
           return;
         }
         if (line.method === 'deposit' && amt > depositBalance) {
-          alert(`Недостаточно средств на депозите. Доступно: ${depositBalance.toLocaleString('ru-RU')}`);
+          toast.error(`Недостаточно средств на депозите. Доступно: ${depositBalance.toLocaleString('ru-RU')}`);
           return;
         }
       }
@@ -218,8 +219,8 @@ export function PaymentDialog({
       onPaymentComplete?.();
     } catch (err: any) {
       console.error('[PaymentDialog] Payment error:', err);
-      alert(err.message || 'Произошла ошибка при обработке платежа');
-      // Don't reset form on error - user can retry or fix amounts
+      toast.error('Произошла ошибка при обработке платежа');
+      setCurrentIdempotencyKey(crypto.randomUUID());
     } finally {
       setLoading(false);
     }

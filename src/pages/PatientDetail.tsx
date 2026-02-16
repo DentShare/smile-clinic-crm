@@ -26,6 +26,7 @@ import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import { PatientUpcomingVisits } from '@/components/patient/PatientUpcomingVisits';
 import { PatientHistoryTimeline } from '@/components/patient/PatientHistoryTimeline';
 import { PatientDocumentsCard } from '@/components/documents/PatientDocumentsCard';
+import { PatientNotificationHistory } from '@/components/patient/PatientNotificationHistory';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
 import { formatPhone } from '@/lib/formatters';
@@ -261,25 +262,13 @@ const PatientDetail = () => {
                 className="w-full justify-start gap-2" 
                 size="sm"
                 onClick={() => {
-                  console.log('Print invoice for patient:', patient.id);
                   toast.info('Функция печати счёта будет добавлена');
                 }}
               >
                 <Printer className="h-4 w-4" />
                 Печать счёта
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start gap-2" 
-                size="sm"
-                onClick={() => {
-                  console.log('Send SMS to patient:', patient.phone);
-                  toast.info('Функция SMS напоминания будет добавлена');
-                }}
-              >
-                <Send className="h-4 w-4" />
-                SMS напоминание
-              </Button>
+              {/* SMS button removed — use Notification History card below */}
               <Button 
                 variant="outline" 
                 className="w-full justify-start gap-2" 
@@ -299,9 +288,16 @@ const PatientDetail = () => {
           />
 
           {/* Upcoming Appointments - Real data */}
-          <PatientUpcomingVisits 
+          <PatientUpcomingVisits
             patientId={patient.id}
             onCreateVisit={() => setIsNewVisitOpen(true)}
+          />
+
+          {/* Notification History */}
+          <PatientNotificationHistory
+            patientId={patient.id}
+            patientName={patient.full_name}
+            patientPhone={patient.phone}
           />
 
           {/* Debts */}

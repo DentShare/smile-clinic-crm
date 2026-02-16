@@ -190,6 +190,37 @@ export interface InventoryItem {
   updated_at: string;
 }
 
+export type InventoryMovementType = 'in' | 'out' | 'adjustment' | 'auto_deduct' | 'return';
+
+export interface ServiceMaterial {
+  id: string;
+  clinic_id: string;
+  service_id: string;
+  inventory_id: string;
+  quantity_per_unit: number;
+  is_required: boolean;
+  created_at: string;
+  inventory?: InventoryItem;
+  service?: Service;
+}
+
+export interface InventoryMovement {
+  id: string;
+  clinic_id: string;
+  inventory_id: string;
+  movement_type: InventoryMovementType;
+  quantity: number;
+  quantity_before: number;
+  quantity_after: number;
+  reference_type?: string;
+  reference_id?: string;
+  performed_work_id?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+  inventory?: InventoryItem;
+}
+
 export interface DocumentTemplate {
   id: string;
   clinic_id: string;

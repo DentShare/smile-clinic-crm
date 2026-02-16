@@ -24,6 +24,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Plus, Search, Loader2 } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import type { Patient } from '@/types/database';
 
 const Patients = () => {
@@ -246,9 +247,7 @@ const Patients = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <TableSkeleton rows={8} columns={4} />
       ) : filteredPatients.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
           {searchQuery ? 'Пациенты не найдены' : 'Нет пациентов. Добавьте первого!'}

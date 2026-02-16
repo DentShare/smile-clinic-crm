@@ -61,7 +61,7 @@ const SuperAdminDashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Super Admin</h1>
-          <p className="text-muted-foreground">Управление платформой DentaClinic</p>
+          <p className="text-muted-foreground">Управление платформой Dentelica</p>
         </div>
         <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />

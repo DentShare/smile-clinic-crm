@@ -60,14 +60,24 @@ export const MessengerSettings = () => {
     } else {
       toast.success('Настройки мессенджеров сохранены');
 
-      // If telegram token is set, try to register webhook
+      // Register webhook via Edge Function (token stays server-side)
       if (config.telegram_bot_token?.trim()) {
         try {
-          const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
-          await fetch(
-            `https://api.telegram.org/bot${config.telegram_bot_token.trim()}/setWebhook?url=${encodeURIComponent(webhookUrl)}`,
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-telegram-webhook`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session?.access_token}`,
+                'Content-Type': 'application/json',
+              },
+            },
           );
-          toast.success('Telegram webhook зарегистрирован');
+          const result = await res.json();
+          if (result.ok) {
+            toast.success('Telegram webhook зарегистрирован');
+          }
         } catch {
           toast.error('Не удалось зарегистрировать Telegram webhook');
         }

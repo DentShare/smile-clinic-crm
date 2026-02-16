@@ -22,18 +22,36 @@ export interface ServiceStats {
   revenue: number;
 }
 
+export interface PaymentMethodStats {
+  method: string;
+  label: string;
+  value: number;
+  color: string;
+}
+
+export interface DebtorInfo {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  balance: number;
+}
+
 export interface AnalyticsKPIs {
   conversionRate: number;
   conversionGrowth: number;
   averageCheck: number;
   newPatients: number;
   doctorWorkload: number;
+  totalRevenue: number;
+  debtorsCount: number;
 }
 
 export interface ClinicAnalyticsData {
   revenueData: RevenueDataPoint[];
   conversionData: ConversionData[];
   servicesData: ServiceStats[];
+  paymentMethods: PaymentMethodStats[];
+  debtors: DebtorInfo[];
   kpis: AnalyticsKPIs;
   isLoading: boolean;
   error: Error | null;
@@ -342,6 +360,91 @@ export function useClinicAnalytics(dateRange: DateRange = 'week'): ClinicAnalyti
     enabled: !!clinicId,
   });
 
+  // Query: Payment methods distribution
+  const { data: paymentMethodsData } = useQuery({
+    queryKey: ['analytics', 'payment-methods', clinicId, startDateStr, endDateStr],
+    queryFn: async () => {
+      if (!clinicId) return [];
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('payment_method, amount')
+        .eq('clinic_id', clinicId)
+        .gte('created_at', startDateStr)
+        .lte('created_at', endDateStr + 'T23:59:59')
+        .gt('amount', 0);
+
+      if (error) throw error;
+
+      const methodLabels: Record<string, string> = {
+        cash: 'Наличные',
+        uzcard: 'UzCard',
+        humo: 'Humo',
+        visa: 'Visa',
+        mastercard: 'Mastercard',
+        click: 'Click',
+        payme: 'Payme',
+        transfer: 'Перевод',
+        card: 'Карта',
+      };
+
+      const methodColors: Record<string, string> = {
+        cash: 'hsl(var(--chart-1))',
+        uzcard: 'hsl(var(--chart-2))',
+        humo: 'hsl(var(--chart-3))',
+        click: 'hsl(var(--chart-4))',
+        payme: 'hsl(var(--chart-5))',
+        visa: 'hsl(var(--primary))',
+        mastercard: 'hsl(var(--secondary))',
+        transfer: 'hsl(var(--muted))',
+        card: 'hsl(var(--accent))',
+      };
+
+      const methodMap = new Map<string, number>();
+      (data || []).forEach(p => {
+        const method = p.payment_method || 'cash';
+        methodMap.set(method, (methodMap.get(method) || 0) + Number(p.amount));
+      });
+
+      return Array.from(methodMap.entries())
+        .map(([method, value]) => ({
+          method,
+          label: methodLabels[method] || method,
+          value,
+          color: methodColors[method] || 'hsl(var(--muted))',
+        }))
+        .sort((a, b) => b.value - a.value);
+    },
+    enabled: !!clinicId,
+  });
+
+  // Query: Debtors (patients with negative balance)
+  const { data: debtorsData } = useQuery({
+    queryKey: ['analytics', 'debtors', clinicId],
+    queryFn: async () => {
+      if (!clinicId) return [];
+
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, full_name, phone, balance')
+        .eq('clinic_id', clinicId)
+        .lt('balance', 0)
+        .order('balance', { ascending: true })
+        .limit(20);
+
+      if (error) throw error;
+
+      return (data || []).map(p => ({
+        id: p.id,
+        full_name: p.full_name,
+        phone: p.phone,
+        balance: Number(p.balance),
+      }));
+    },
+    enabled: !!clinicId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Calculate conversion metrics
   const scheduled = appointmentStats?.scheduled || 0;
   const completed = appointmentStats?.completed || 0;
@@ -362,16 +465,22 @@ export function useClinicAnalytics(dateRange: DateRange = 'week'): ClinicAnalyti
 
   const isLoading = revenueLoading || appointmentsLoading || servicesLoading;
 
+  const totalRevenue = (revenueByDay || []).reduce((sum, d) => sum + d.value, 0);
+
   return {
     revenueData: revenueByDay || [],
     conversionData,
     servicesData: servicesStats || [],
+    paymentMethods: paymentMethodsData || [],
+    debtors: debtorsData || [],
     kpis: {
       conversionRate: currentConversion,
       conversionGrowth,
       averageCheck: avgCheckData || 0,
       newPatients: newPatientsCount || 0,
       doctorWorkload: doctorWorkload || 0,
+      totalRevenue,
+      debtorsCount: debtorsData?.length || 0,
     },
     isLoading,
     error: null,

@@ -8,7 +8,7 @@ export const Navbar = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <span className="text-2xl">🦷</span>
-          <span className="font-bold text-lg">DentaClinic</span>
+          <span className="font-bold text-lg">Dentelica</span>
         </Link>
 
         {/* Nav Links */}

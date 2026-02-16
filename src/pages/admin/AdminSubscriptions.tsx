@@ -82,7 +82,7 @@ const AdminSubscriptions = () => {
                       <TableCell>
                         <div>
                           <p className="font-medium">{clinic.name}</p>
-                          <p className="text-xs text-muted-foreground">{clinic.subdomain}.dent-crm.uz</p>
+                          <p className="text-xs text-muted-foreground">{clinic.subdomain}.dentelica.uz</p>
                         </div>
                       </TableCell>
                       <TableCell>
