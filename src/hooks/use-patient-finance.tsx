@@ -230,9 +230,8 @@ export function usePatientFinance(patientId?: string) {
     amount: number,
     method: string,
     options?: {
-      appointmentId?: string;
-      fiscalCheckUrl?: string;
       notes?: string;
+      idempotencyKey?: string;
     }
   ): Promise<PaymentResult> => {
     setLoading(true);
@@ -245,7 +244,7 @@ export function usePatientFinance(patientId?: string) {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, clinic_id')
+        .select('id, clinic_id, user_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -256,10 +255,11 @@ export function usePatientFinance(patientId?: string) {
         p_patient_id: pId,
         p_amount: amount,
         p_method: method,
-        p_appointment_id: options?.appointmentId || null,
-        p_fiscal_check_url: options?.fiscalCheckUrl || null,
+        p_processed_by: profile.user_id,
         p_notes: options?.notes || null,
-        p_received_by: profile.id
+        p_idempotency_key: options?.idempotencyKey || null,
+        p_ip_address: null,
+        p_user_agent: null,
       });
 
       if (rpcError) throw rpcError;
