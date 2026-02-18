@@ -37,8 +37,8 @@
 
 ```env
 # Production Supabase (используйте ваши реальные значения)
-VITE_SUPABASE_URL=https://vdihwysnyyipkvaevzyp.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkaWh3eXNueXlpcGt2YWV2enlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjYwNDUsImV4cCI6MjA4NDU0MjA0NX0.dyn-L_k5Qvwc_oNgpReYUhrktBIHEoipFIoNcF17exk
+VITE_SUPABASE_URL=https://vdykmcgigszhjcikeepv.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkeWttY2dpZ3N6aGpjaWtlZXB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5NzAxNzQsImV4cCI6MjA4NjU0NjE3NH0.mo_oYKNWFe3-CF7jGoQKYliJLU8PUOPaeTLd-_9hGks
 ```
 
 **Важно:**
@@ -100,7 +100,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 // В Console:
 console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
 
-// Должно показать: https://vdihwysnyyipkvaevzyp.supabase.co
+// Должно показать: https://vdykmcgigszhjcikeepv.supabase.co
 ```
 
 #### 2. Тест RPC функций

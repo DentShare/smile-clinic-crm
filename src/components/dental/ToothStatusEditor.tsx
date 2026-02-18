@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ToothStatus } from '@/types/database';
 import { toothStatusColors, toothStatusLabels } from './ToothStatusLegend';
+import { Cuboid } from 'lucide-react';
 import { useState } from 'react';
 
 interface ToothStatusEditorProps {
@@ -18,6 +19,7 @@ interface ToothStatusEditorProps {
   currentStatus: ToothStatus;
   currentNotes?: string;
   onSave: (status: ToothStatus, notes: string) => void;
+  onOpenImplantPassport?: (toothNumber: number) => void;
 }
 
 const ToothStatusEditor = ({
@@ -27,6 +29,7 @@ const ToothStatusEditor = ({
   currentStatus,
   currentNotes = '',
   onSave,
+  onOpenImplantPassport,
 }: ToothStatusEditorProps) => {
   const [selectedStatus, setSelectedStatus] = useState<ToothStatus>(currentStatus);
   const [notes, setNotes] = useState(currentNotes);
@@ -89,6 +92,20 @@ const ToothStatusEditor = ({
               rows={3}
             />
           </div>
+
+          {selectedStatus === 'implant' && onOpenImplantPassport && toothNumber && (
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => {
+                onOpenChange(false);
+                onOpenImplantPassport(toothNumber);
+              }}
+            >
+              <Cuboid className="h-4 w-4" />
+              Паспорт импланта
+            </Button>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

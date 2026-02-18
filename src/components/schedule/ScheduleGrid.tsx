@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { isToday, setHours, setMinutes, getDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useDoctorSchedules } from '@/hooks/use-doctor-schedules';
+import { getDoctorColor, buildDoctorColorMap } from '@/lib/doctor-colors';
 import type { Appointment, Patient, Profile } from '@/types/database';
 
 interface ScheduleGridProps {
@@ -21,6 +22,7 @@ interface ScheduleGridProps {
   slotHeight: number;
   onAppointmentUpdated: () => void;
   onCreateAppointment?: (hour: number, minutes: number, doctorId?: string) => void;
+  doctorColorMap?: Map<string, number>;
 }
 
 export function ScheduleGrid({
@@ -32,6 +34,7 @@ export function ScheduleGrid({
   slotHeight,
   onAppointmentUpdated,
   onCreateAppointment,
+  doctorColorMap: externalColorMap,
 }: ScheduleGridProps) {
   const { getDoctorTimeRange } = useDoctorSchedules();
   const dayOfWeek = getDay(selectedDate);
@@ -61,6 +64,12 @@ export function ScheduleGrid({
     }
     return slots;
   }, [workStart, workEnd]);
+
+  // Use external color map if provided, otherwise build from local doctors
+  const doctorColorMap = useMemo(
+    () => externalColorMap || buildDoctorColorMap(doctors.map(d => d.id)),
+    [externalColorMap, doctors]
+  );
 
   // Group appointments by doctor
   const appointmentsByDoctor = useMemo(() => {
@@ -228,6 +237,8 @@ export function ScheduleGrid({
             height={getAppointmentHeight(appointment.start_time, appointment.end_time)}
             isHovered={hoveredAppointment === appointment.id}
             onHover={(hovered) => setHoveredAppointment(hovered ? appointment.id : null)}
+            onStatusChange={onAppointmentUpdated}
+            doctorColorIndex={doctorColorMap.get(appointment.doctor_id || '') ?? 0}
           />
         ))}
       </div>
@@ -249,15 +260,25 @@ export function ScheduleGrid({
           </div>
           {doctors.length > 0 ? (
             <>
-              {doctors.map((doctor) => (
-                <div 
-                  key={doctor.id} 
-                  className="flex-1 min-w-[200px] p-2 border-r text-center"
-                >
-                  <p className="text-sm font-medium truncate">{doctor.full_name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
-                </div>
-              ))}
+              {doctors.map((doctor) => {
+                const docColor = getDoctorColor(doctorColorMap.get(doctor.id) ?? 0);
+                return (
+                  <div
+                    key={doctor.id}
+                    className="flex-1 min-w-[200px] p-2 border-r text-center"
+                    style={{ borderBottomWidth: '3px', borderBottomColor: docColor.dot }}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: docColor.dot }}
+                      />
+                      <p className="text-sm font-medium truncate">{doctor.full_name}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
+                  </div>
+                );
+              })}
               {/* Unassigned column header if there are unassigned appointments */}
               {appointmentsByDoctor['unassigned']?.length > 0 && (
                 <div className="flex-1 min-w-[200px] p-2 border-r text-center">

@@ -33,7 +33,8 @@ import {
   ClipboardList,
   Pencil,
   Check,
-  Gift
+  Gift,
+  Ticket
 } from 'lucide-react';
 import { PaymentDialog } from '@/components/finance/PaymentDialog';
 import { CategoryGroupedServiceSelect } from '@/components/services/CategoryGroupedServiceSelect';
@@ -119,6 +120,13 @@ export function CompleteVisitDialog({
 
   // Patient packages
   const [patientPackages, setPatientPackages] = useState<any[]>([]);
+  const [packageUsage, setPackageUsage] = useState<Record<string, Record<string, number>>>({});
+
+  // Discount card
+  const [discountCard, setDiscountCard] = useState<{ discount_percent: number; card_number: string } | null>(null);
+
+  // Vouchers
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
 
   // Additional service selection
   const [selectedNewService, setSelectedNewService] = useState('');
@@ -148,17 +156,48 @@ export function CompleteVisitDialog({
 
   const fetchLoyaltyAndPackages = async () => {
     if (!clinic) return;
-    const [loyaltyRes, pkgRes] = await Promise.all([
+    const [loyaltyRes, pkgRes, cardRes, voucherRes] = await Promise.all([
       supabase.from('patient_loyalty').select('current_discount_percent').eq('patient_id', patientId).eq('clinic_id', clinic.id).maybeSingle(),
       supabase.from('patient_packages')
-        .select('*, package:package_id(name, items:service_package_items(service_id, quantity))')
+        .select('*, package:package_id(name, items:service_package_items(service_id, quantity)), usage:patient_package_usage(service_id, quantity)')
         .eq('patient_id', patientId)
         .eq('clinic_id', clinic.id)
-        .eq('status', 'active'),
+        .eq('status', 'active')
+        .gte('expires_at', new Date().toISOString()),
+      supabase.from('discount_cards')
+        .select('discount_percent, card_number')
+        .eq('patient_id', patientId)
+        .eq('clinic_id', clinic.id)
+        .eq('is_active', true)
+        .or(`valid_until.is.null,valid_until.gte.${new Date().toISOString().split('T')[0]}`)
+        .limit(1)
+        .maybeSingle(),
+      supabase.from('vouchers')
+        .select('id, code, type, service_id, amount, service:service_id(name)')
+        .eq('clinic_id', clinic.id)
+        .eq('is_used', false)
+        .or(`patient_id.is.null,patient_id.eq.${patientId}`)
+        .or(`expires_at.is.null,expires_at.gte.${new Date().toISOString().split('T')[0]}`),
     ]);
+
     const discount = loyaltyRes.data?.current_discount_percent || 0;
     setLoyaltyDiscount(discount);
-    setPatientPackages(pkgRes.data || []);
+
+    const pkgs = pkgRes.data || [];
+    setPatientPackages(pkgs);
+
+    // Build usage map: { packageId: { serviceId: usedQty } }
+    const usageMap: Record<string, Record<string, number>> = {};
+    for (const pkg of pkgs) {
+      usageMap[pkg.id] = {};
+      for (const u of (pkg.usage || [])) {
+        usageMap[pkg.id][u.service_id] = (usageMap[pkg.id][u.service_id] || 0) + u.quantity;
+      }
+    }
+    setPackageUsage(usageMap);
+
+    setDiscountCard(cardRes.data || null);
+    setAvailableVouchers(voucherRes.data || []);
   };
 
   // Fetch the service that was scheduled with the appointment
@@ -272,26 +311,44 @@ export function CompleteVisitDialog({
     }
   };
 
+  // Check remaining package quantity for a service
+  const getPackageRemaining = (serviceId: string): { pkg: any; remaining: number } | null => {
+    for (const pp of patientPackages) {
+      const item = pp.package?.items?.find((i: any) => i.service_id === serviceId);
+      if (!item) continue;
+      const used = packageUsage[pp.id]?.[serviceId] || 0;
+      // Also count services already added in this session
+      const sessionUsed = selectedServices.filter(s => s.service_id === serviceId && s.service_name.includes('📦')).reduce((sum, s) => sum + s.quantity, 0);
+      const remaining = item.quantity - used - sessionUsed;
+      if (remaining > 0) return { pkg: pp, remaining };
+    }
+    return null;
+  };
+
   const handleAddService = () => {
     if (!selectedNewService) return;
-    
+
     const service = services.find(s => s.id === selectedNewService);
     if (!service) return;
 
     const toothNum = selectedNewToothNumber ? parseInt(selectedNewToothNumber) : null;
 
-    // Check if this service is covered by any active package
-    const coveredPackage = patientPackages.find((pp: any) => 
-      pp.package?.items?.some((item: any) => item.service_id === service.id)
-    );
+    // Check if this service is covered by any active package with remaining qty
+    const pkgInfo = getPackageRemaining(service.id);
+    const isCoveredByPackage = !!pkgInfo;
+
+    // Determine discount: package > discount card > loyalty
+    const effectiveDiscount = isCoveredByPackage ? 0
+      : discountCard ? discountCard.discount_percent
+      : loyaltyDiscount;
 
     setSelectedServices(prev => [...prev, {
       id: `manual-${service.id}-${Date.now()}`,
       service_id: service.id,
-      service_name: service.name + (coveredPackage ? ' 📦' : ''),
-      price: coveredPackage ? 0 : Number(service.price),
+      service_name: service.name + (isCoveredByPackage ? ` 📦 (ост. ${pkgInfo!.remaining})` : ''),
+      price: isCoveredByPackage ? 0 : Number(service.price),
       quantity: 1,
-      discount_percent: coveredPackage ? 0 : loyaltyDiscount,
+      discount_percent: effectiveDiscount,
       tooth_number: toothNum,
       fromPlan: false
     }]);
@@ -441,6 +498,18 @@ export function CompleteVisitDialog({
                 appointment_id: appointmentId,
               });
             }
+          }
+        }
+
+        // Mark applied vouchers as used
+        for (const s of selectedServices) {
+          if (s.id.startsWith('voucher-')) {
+            const voucherId = s.id.replace('voucher-', '');
+            await supabase.from('vouchers').update({
+              is_used: true,
+              used_at: new Date().toISOString(),
+              used_appointment_id: appointmentId,
+            }).eq('id', voucherId);
           }
         }
 
@@ -655,6 +724,57 @@ export function CompleteVisitDialog({
                   </div>
                 </div>
 
+                {/* Available Vouchers */}
+                {availableVouchers.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <Ticket className="h-3.5 w-3.5" />
+                      Доступные ваучеры
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {availableVouchers.map(v => {
+                        const alreadyApplied = selectedServices.some(s => s.id === `voucher-${v.id}`);
+                        return (
+                          <Button
+                            key={v.id}
+                            variant={alreadyApplied ? 'default' : 'outline'}
+                            size="sm"
+                            className="text-xs gap-1"
+                            disabled={alreadyApplied}
+                            onClick={() => {
+                              if (v.type === 'service' && v.service_id) {
+                                const svc = services.find(s => s.id === v.service_id);
+                                setSelectedServices(prev => [...prev, {
+                                  id: `voucher-${v.id}`,
+                                  service_id: v.service_id,
+                                  service_name: (svc?.name || v.service?.name || 'Услуга') + ' (ваучер)',
+                                  price: 0,
+                                  quantity: 1,
+                                  discount_percent: 0,
+                                  fromPlan: false,
+                                }]);
+                              } else if (v.type === 'amount' && v.amount > 0) {
+                                setSelectedServices(prev => [...prev, {
+                                  id: `voucher-${v.id}`,
+                                  service_id: '',
+                                  service_name: `Ваучер ${v.code} (−${v.amount.toLocaleString('ru-RU')})`,
+                                  price: -v.amount,
+                                  quantity: 1,
+                                  discount_percent: 0,
+                                  fromPlan: false,
+                                }]);
+                              }
+                            }}
+                          >
+                            <Ticket className="h-3 w-3" />
+                            {v.code}: {v.type === 'service' ? (v.service?.name || 'Услуга') : `${v.amount?.toLocaleString('ru-RU')} сум`}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <Separator />
 
                 {/* Treatment Plan Section */}
@@ -738,7 +858,13 @@ export function CompleteVisitDialog({
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div>
               <p className="text-sm text-muted-foreground">Услуг: {selectedServices.length}</p>
-              {loyaltyDiscount > 0 && (
+              {discountCard && (
+                <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                  <Gift className="h-3 w-3" />
+                  Карта {discountCard.card_number}: −{discountCard.discount_percent}%
+                </p>
+              )}
+              {!discountCard && loyaltyDiscount > 0 && (
                 <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
                   <Gift className="h-3 w-3" />
                   Скидка лояльности: {loyaltyDiscount}%

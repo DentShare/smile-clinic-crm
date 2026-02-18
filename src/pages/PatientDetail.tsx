@@ -19,6 +19,7 @@ import {
   Send
 } from 'lucide-react';
 import ToothChart from '@/components/dental/ToothChart';
+import { ImplantPassportCard } from '@/components/implants/ImplantPassportCard';
 import TreatmentPlanCard from '@/components/treatment/TreatmentPlanCard';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { PatientFinanceSummary } from '@/components/finance/PatientFinanceSummary';
@@ -27,6 +28,10 @@ import { PatientUpcomingVisits } from '@/components/patient/PatientUpcomingVisit
 import { PatientHistoryTimeline } from '@/components/patient/PatientHistoryTimeline';
 import { PatientDocumentsCard } from '@/components/documents/PatientDocumentsCard';
 import { PatientNotificationHistory } from '@/components/patient/PatientNotificationHistory';
+import { PrescriptionList } from '@/components/treatment/PrescriptionList';
+import { ReferralTracker } from '@/components/patients/ReferralTracker';
+import { PatientTagBadges } from '@/components/patients/PatientTagBadges';
+import { PatientLoyaltyWidget } from '@/components/patient/PatientLoyaltyWidget';
 import type { Patient } from '@/types/database';
 import { format } from 'date-fns';
 import { formatPhone } from '@/lib/formatters';
@@ -40,6 +45,7 @@ const PatientDetail = () => {
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
+  const [visitsRefreshKey, setVisitsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (id && clinic) {
@@ -130,6 +136,9 @@ const PatientDetail = () => {
                     {calculateAge(patient.birth_date)} лет
                   </p>
                 )}
+                <div className="mt-2">
+                  <PatientTagBadges patientId={patient.id} editable={isClinicAdmin} />
+                </div>
               </div>
 
               <Separator className="my-4" />
@@ -210,28 +219,9 @@ const PatientDetail = () => {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* CENTER COLUMN - Tooth Chart & Timeline (Dynamic) */}
-        <div className="lg:col-span-6 flex flex-col gap-4 min-h-0">
-          {/* Tooth Chart - Always Visible */}
-          <ToothChart 
-            patientId={patient.id} 
-            readOnly={!canEditToothChart}
-            patientBirthDate={patient.birth_date}
-          />
-
-          {/* Treatment Plans */}
-          <TreatmentPlanCard 
-            patientId={patient.id} 
-            patientName={patient.full_name}
-            patientPhone={patient.phone}
-            patientBirthDate={patient.birth_date}
-            readOnly={!canEditToothChart} 
-          />
-
-          {/* History Timeline - Real data */}
-          <PatientHistoryTimeline 
+          {/* History Timeline */}
+          <PatientHistoryTimeline
             patientId={patient.id}
             patientName={patient.full_name}
             onRefresh={() => {
@@ -239,6 +229,48 @@ const PatientDetail = () => {
               setFinanceRefreshKey(prev => prev + 1);
             }}
           />
+
+          {/* Referrals */}
+          <Card>
+            <CardContent className="pt-4">
+              <ReferralTracker patientId={patient.id} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CENTER COLUMN - Tooth Chart & Clinical (Dynamic) */}
+        <div className="lg:col-span-6 flex flex-col gap-4 min-h-0">
+          {/* Tooth Chart - Always Visible */}
+          <ToothChart
+            patientId={patient.id}
+            readOnly={!canEditToothChart}
+            patientBirthDate={patient.birth_date}
+          />
+
+          {/* Implant Passports */}
+          <ImplantPassportCard
+            patientId={patient.id}
+            readOnly={!canEditToothChart}
+            onScheduleVisit={(text) => {
+              setIsNewVisitOpen(true);
+            }}
+          />
+
+          {/* Treatment Plans */}
+          <TreatmentPlanCard
+            patientId={patient.id}
+            patientName={patient.full_name}
+            patientPhone={patient.phone}
+            patientBirthDate={patient.birth_date}
+            readOnly={!canEditToothChart}
+          />
+
+          {/* Prescriptions */}
+          <Card>
+            <CardContent className="pt-4">
+              <PrescriptionList patientId={patient.id} />
+            </CardContent>
+          </Card>
         </div>
 
         {/* RIGHT COLUMN - Quick Actions */}
@@ -282,14 +314,18 @@ const PatientDetail = () => {
           </Card>
 
           {/* Finance Summary */}
-          <PatientFinanceSummary 
-            patientId={patient.id} 
+          <PatientFinanceSummary
+            patientId={patient.id}
             key={financeRefreshKey}
           />
+
+          {/* Loyalty, Packages, Deposits, Cards */}
+          <PatientLoyaltyWidget patientId={patient.id} />
 
           {/* Upcoming Appointments - Real data */}
           <PatientUpcomingVisits
             patientId={patient.id}
+            refreshKey={visitsRefreshKey}
             onCreateVisit={() => setIsNewVisitOpen(true)}
           />
 
@@ -337,6 +373,7 @@ const PatientDetail = () => {
         onOpenChange={setIsNewVisitOpen}
         preSelectedPatientId={patient.id}
         preSelectedPatientName={patient.full_name}
+        onSuccess={() => setVisitsRefreshKey(k => k + 1)}
       />
 
       {/* Payment Dialog */}
@@ -350,6 +387,7 @@ const PatientDetail = () => {
           fetchPatient();
           setFinanceRefreshKey(prev => prev + 1);
         }}
+        onCreateVisit={() => setIsNewVisitOpen(true)}
       />
     </div>
   );

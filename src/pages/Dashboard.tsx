@@ -30,6 +30,9 @@ import { cn } from '@/lib/utils';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import NewVisitSlideOver from '@/components/appointments/NewVisitSlideOver';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
+import { BirthdayWidget } from '@/components/dashboard/BirthdayWidget';
+import { LowStockWidget } from '@/components/dashboard/LowStockWidget';
+import { DebtsWidget } from '@/components/dashboard/DebtsWidget';
 
 
 const Dashboard = () => {
@@ -149,7 +152,7 @@ const Dashboard = () => {
     if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
       paymentsQuery = paymentsQuery.in('patient_id', scopedPatientIds);
     } else if (scopedPatientIds !== null) {
-      paymentsQuery = paymentsQuery.in('patient_id', ['__none__']);
+      paymentsQuery = paymentsQuery.in('patient_id', ['00000000-0000-0000-0000-000000000000']);
     }
 
     const { data: payments } = await paymentsQuery;
@@ -165,7 +168,7 @@ const Dashboard = () => {
     if (scopedPatientIds !== null && scopedPatientIds.length > 0) {
       debtQuery = debtQuery.in('id', scopedPatientIds);
     } else if (scopedPatientIds !== null) {
-      debtQuery = debtQuery.in('id', ['__none__']);
+      debtQuery = debtQuery.in('id', ['00000000-0000-0000-0000-000000000000']);
     }
 
     const { data: debtPatients } = await debtQuery;
@@ -426,7 +429,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Next few days preview */}
-          <Card className="flex-1">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Ближайшие дни</CardTitle>
             </CardHeader>
@@ -456,6 +459,11 @@ const Dashboard = () => {
               })}
             </CardContent>
           </Card>
+
+          {/* Dashboard Widgets */}
+          <BirthdayWidget />
+          <DebtsWidget />
+          <LowStockWidget />
         </div>
       </div>
 

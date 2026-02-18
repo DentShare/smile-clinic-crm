@@ -1,40 +1,59 @@
 import { useMemo, useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CurrentTimeIndicator } from '@/components/schedule/CurrentTimeIndicator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
+import { CurrencyDisplay } from '@/components/ui/currency-display';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Clock, UserCheck, CheckCircle2, XCircle, UserX, DollarSign, ExternalLink } from 'lucide-react';
+import { getAppointmentStyle, buildDoctorColorMap } from '@/lib/doctor-colors';
+import { supabase } from '@/integrations/supabase/clientRuntime';
+import { toast } from 'sonner';
+import { CompleteVisitDialog } from '@/components/appointments/CompleteVisitDialog';
+
+const statusLabels: Record<string, string> = {
+  scheduled: 'Запланирован',
+  confirmed: 'Подтверждён',
+  in_progress: 'Пришёл',
+  completed: 'Завершён',
+  cancelled: 'Отменён',
+  no_show: 'Не пришёл',
+};
 
 interface WeeklyScheduleGridProps {
   appointments: (Appointment & { patient: Patient; doctor?: Profile })[];
+  doctors?: Profile[];
   selectedDate: Date;
   workStart?: number;
   workEnd?: number;
   slotHeight?: number;
   onCreateAppointment?: (hour: number, minutes: number, date: Date) => void;
+  onAppointmentUpdated?: () => void;
+  doctorColorMap?: Map<string, number>;
 }
-
-const statusConfig: Record<string, { bgColor: string }> = {
-  scheduled: { bgColor: 'bg-info/10 border-info/20' },
-  confirmed: { bgColor: 'bg-success/10 border-success/20' },
-  in_progress: { bgColor: 'bg-warning/10 border-warning/20' },
-  completed: { bgColor: 'bg-muted border-muted' },
-  cancelled: { bgColor: 'bg-destructive/10 border-destructive/20' },
-  no_show: { bgColor: 'bg-destructive/10 border-destructive/20' },
-};
 
 export function WeeklyScheduleGrid({
   appointments,
+  doctors = [],
   selectedDate,
   workStart = 9,
   workEnd = 20,
   slotHeight = 48,
   onCreateAppointment,
+  onAppointmentUpdated,
+  doctorColorMap: externalColorMap,
 }: WeeklyScheduleGridProps) {
+  const [completeDialogAppt, setCompleteDialogAppt] = useState<(Appointment & { patient: Patient; doctor?: Profile }) | null>(null);
+  // Use external color map if provided, otherwise build from local doctors
+  const doctorColorMap = useMemo(
+    () => externalColorMap || buildDoctorColorMap(doctors.map(d => d.id)),
+    [externalColorMap, doctors]
+  );
   const [hoveredSlot, setHoveredSlot] = useState<{ dayIndex: number; hour: number; minutes: number } | null>(null);
 
   // Get week days starting from Monday
@@ -219,41 +238,168 @@ export function WeeklyScheduleGrid({
                 {dayAppts.map((appointment) => {
                   const top = getAppointmentPosition(appointment.start_time);
                   const height = getAppointmentHeight(appointment.start_time, appointment.end_time);
-                  const status = statusConfig[appointment.status || 'scheduled'] || statusConfig.scheduled;
+                  const docIdx = doctorColorMap.get(appointment.doctor_id || '') ?? 0;
+                  const colorStyle = getAppointmentStyle(docIdx, appointment.status || 'scheduled');
                   const hasDebt = (appointment.patient?.balance ?? 0) < 0;
+                  const canAct = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
+                  const isPreArrival = appointment.status === 'scheduled' || appointment.status === 'confirmed';
 
                   return (
-                    <Link
-                      key={appointment.id}
-                      to={`/patients/${appointment.patient_id}`}
-                      className={cn(
-                        "absolute left-0.5 right-0.5 rounded border p-1 transition-all z-20",
-                        "hover:shadow-md hover:z-30",
-                        status.bgColor
-                      )}
-                      style={{ top: `${top}px`, height: `${height}px`, minHeight: '20px' }}
-                    >
-                      <div className="overflow-hidden h-full">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-medium text-muted-foreground">
-                            {formatTime(appointment.start_time)}
-                          </span>
+                    <Popover key={appointment.id}>
+                      <PopoverTrigger asChild>
+                        <button
+                          className={cn(
+                            "absolute left-0.5 right-0.5 rounded border p-1 transition-all z-20 text-left",
+                            "hover:shadow-md hover:z-30 hover:ring-1 hover:ring-primary/50",
+                          )}
+                          style={{
+                            top: `${top}px`,
+                            height: `${height}px`,
+                            minHeight: '20px',
+                            backgroundColor: colorStyle.bg,
+                            borderColor: colorStyle.border,
+                            color: colorStyle.text,
+                          }}
+                        >
+                          <div className="overflow-hidden h-full">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] font-medium" style={{ color: colorStyle.text }}>
+                                {formatTime(appointment.start_time)}
+                              </span>
+                              {hasDebt && (
+                                <Badge variant="destructive" className="text-[9px] px-0.5 py-0 h-3">
+                                  Долг
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs font-medium truncate leading-tight">
+                              {appointment.patient?.full_name}
+                            </p>
+                            {height > 40 && appointment.doctor && (
+                              <p className="text-[10px] truncate" style={{ opacity: 0.7 }}>
+                                {appointment.doctor.full_name}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent side="right" className="w-64 p-3 space-y-2" align="start">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{appointment.patient?.full_name}</span>
+                          <Badge
+                            variant="outline"
+                            className="text-xs"
+                            style={{ backgroundColor: colorStyle.bg, borderColor: colorStyle.border, color: colorStyle.text }}
+                          >
+                            {statusLabels[appointment.status] || appointment.status}
+                          </Badge>
+                        </div>
+
+                        <div className="text-sm space-y-1">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                          </div>
+                          {appointment.doctor && (
+                            <p className="text-xs text-muted-foreground">{appointment.doctor.full_name}</p>
+                          )}
+                          {appointment.complaints && (
+                            <p className="text-xs">{appointment.complaints}</p>
+                          )}
                           {hasDebt && (
-                            <Badge variant="destructive" className="text-[9px] px-0.5 py-0 h-3">
-                              Долг
-                            </Badge>
+                            <div className="flex items-center gap-2 text-destructive">
+                              <DollarSign className="h-3 w-3" />
+                              <CurrencyDisplay amount={Math.abs(appointment.patient.balance)} size="sm" />
+                              <span className="text-xs">задолженность</span>
+                            </div>
                           )}
                         </div>
-                        <p className="text-xs font-medium truncate leading-tight">
-                          {appointment.patient?.full_name}
-                        </p>
-                        {height > 40 && appointment.doctor && (
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {appointment.doctor.full_name}
-                          </p>
+
+                        {/* Actions */}
+                        {canAct && (
+                          <div className="flex flex-col gap-1 pt-2 border-t">
+                            <div className="flex gap-1">
+                              {isPreArrival && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="flex-1 h-7 text-xs gap-1"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('appointments')
+                                      .update({ status: 'in_progress' })
+                                      .eq('id', appointment.id);
+                                    if (error) { toast.error('Ошибка'); return; }
+                                    toast.success('Пациент пришёл');
+                                    onAppointmentUpdated?.();
+                                  }}
+                                >
+                                  <UserCheck className="h-3 w-3" />
+                                  Пришёл
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                className="flex-1 h-7 text-xs gap-1"
+                                onClick={() => setCompleteDialogAppt(appointment)}
+                              >
+                                <CheckCircle2 className="h-3 w-3" />
+                                Завершить
+                              </Button>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('appointments')
+                                    .update({ status: 'cancelled' })
+                                    .eq('id', appointment.id);
+                                  if (error) { toast.error('Ошибка'); return; }
+                                  toast.success('Запись отменена');
+                                  onAppointmentUpdated?.();
+                                }}
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Отмена
+                              </Button>
+                              {isPreArrival && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 h-7 text-xs gap-1 text-orange-600 hover:text-orange-600"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('appointments')
+                                      .update({ status: 'no_show' })
+                                      .eq('id', appointment.id);
+                                    if (error) { toast.error('Ошибка'); return; }
+                                    toast.success('Отмечен как "Не пришёл"');
+                                    onAppointmentUpdated?.();
+                                  }}
+                                >
+                                  <UserX className="h-3 w-3" />
+                                  Не пришёл
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </div>
-                    </Link>
+
+                        {/* Patient link */}
+                        <div className="pt-1 border-t">
+                          <Link
+                            to={`/patients/${appointment.patient_id}`}
+                            className="flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Карта пациента
+                          </Link>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   );
                 })}
               </div>
@@ -261,6 +407,22 @@ export function WeeklyScheduleGrid({
           })}
         </div>
       </ScrollArea>
+
+      {/* Complete Visit Dialog */}
+      {completeDialogAppt && (
+        <CompleteVisitDialog
+          open={!!completeDialogAppt}
+          onOpenChange={(open) => { if (!open) setCompleteDialogAppt(null); }}
+          appointmentId={completeDialogAppt.id}
+          patientId={completeDialogAppt.patient_id}
+          patientName={completeDialogAppt.patient?.full_name || ''}
+          doctorId={completeDialogAppt.doctor_id || undefined}
+          onComplete={() => {
+            setCompleteDialogAppt(null);
+            onAppointmentUpdated?.();
+          }}
+        />
+      )}
     </div>
   );
 }

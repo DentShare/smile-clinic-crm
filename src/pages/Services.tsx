@@ -27,7 +27,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { Plus, Loader2, Sparkles, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Loader2, Sparkles, FileSpreadsheet, ChevronDown, Check, X, Pencil } from 'lucide-react';
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 import { LoadTemplateServicesDialog } from '@/components/services/LoadTemplateServicesDialog';
 import type { Service, ServiceCategory } from '@/types/database';
@@ -47,6 +54,8 @@ const Services = () => {
     category_id: '',
     description: ''
   });
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
 
   const fetchData = async () => {
     if (!clinic?.id) return;
@@ -93,6 +102,24 @@ const Services = () => {
       toast.success('Услуга добавлена');
       setIsDialogOpen(false);
       setNewService({ name: '', price: '', duration_minutes: '30', category_id: '', description: '' });
+      fetchData();
+    }
+  };
+
+  const handleRenameCategory = async (categoryId: string, newName: string) => {
+    if (!newName.trim() || !clinic?.id) return;
+
+    const { error } = await supabase
+      .from('service_categories')
+      .update({ name: newName.trim() })
+      .eq('id', categoryId)
+      .eq('clinic_id', clinic.id);
+
+    if (error) {
+      toast.error('Ошибка переименования категории');
+    } else {
+      toast.success('Категория переименована');
+      setEditingCategoryId(null);
       fetchData();
     }
   };
@@ -191,6 +218,25 @@ const Services = () => {
                       />
                     </div>
                   </div>
+                  {categories.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Категория</Label>
+                      <Select
+                        value={newService.category_id || 'none'}
+                        onValueChange={(v) => setNewService({ ...newService, category_id: v === 'none' ? '' : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Без категории" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Без категории</SelectItem>
+                          {categories.map(cat => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="description">Описание</Label>
                     <Input
@@ -238,7 +284,53 @@ const Services = () => {
             <div key={category?.id || 'uncategorized'} className="space-y-2">
               {category && categories.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{category.name}</h2>
+                  {editingCategoryId === category.id ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameCategory(category.id, editingCategoryName);
+                          if (e.key === 'Escape') setEditingCategoryId(null);
+                        }}
+                        className="h-8 w-48 text-lg font-semibold"
+                        autoFocus
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => handleRenameCategory(category.id, editingCategoryName)}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => setEditingCategoryId(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group">
+                      <h2 className="text-lg font-semibold">{category.name}</h2>
+                      {isClinicAdmin && category.id && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setEditingCategoryId(category.id);
+                            setEditingCategoryName(category.name);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
                   <Badge variant="secondary">{categoryServices.length}</Badge>
                 </div>
               )}

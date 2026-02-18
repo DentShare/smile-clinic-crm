@@ -1509,6 +1509,55 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          id: string
+          clinic_id: string
+          payment_id: string
+          performed_work_id: string
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          payment_id: string
+          performed_work_id: string
+          amount: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          payment_id?: string
+          performed_work_id?: string
+          amount?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_performed_work_id_fkey"
+            columns: ["performed_work_id"]
+            isOneToOne: false
+            referencedRelation: "performed_works"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

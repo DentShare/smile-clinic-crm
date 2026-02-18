@@ -71,12 +71,12 @@ export function ExtendSubscriptionDialog({
   }, [open]);
 
   const fetchPlans = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('subscription_plans')
       .select('id, name, name_ru, price_monthly')
       .eq('is_active', true)
       .order('price_monthly');
-    if (data) setDbPlans(data);
+    if (!error && data) setDbPlans(data);
   };
 
   const period = periods[selectedPeriod];
@@ -133,13 +133,14 @@ export function ExtendSubscriptionDialog({
       if (subError) throw subError;
 
       // Add billing history record
-      await supabase.from('billing_history').insert({
+      const { error: billingError } = await supabase.from('billing_history').insert({
         clinic_id: clinic.id,
         amount: price.total,
         status: 'paid',
         payment_method: 'manual',
         description: `${planConfig.name} — ${durationMonths} мес., ${doctorCount} врачей`,
       });
+      if (billingError) console.error('Billing history insert error:', billingError);
 
       toast.success(`Подписка обновлена: ${planConfig.name}, ${durationMonths} мес.`);
       onOpenChange(false);

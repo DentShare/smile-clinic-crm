@@ -23,9 +23,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2 } from 'lucide-react';
+import { Plus, Search, Loader2, Upload, LayoutGrid, List } from 'lucide-react';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import type { Patient } from '@/types/database';
+import { PatientKanban } from '@/components/patients/PatientKanban';
+import { PatientTagBadges } from '@/components/patients/PatientTagBadges';
+import { ImportPatientsDialog } from '@/components/patients/ImportPatientsDialog';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -35,6 +38,8 @@ const Patients = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [newPatient, setNewPatient] = useState({
     full_name: '',
     phone: '',
@@ -162,6 +167,19 @@ const Patients = () => {
           />
         )}
 
+        <div className="flex gap-2 items-center">
+          <div className="flex border rounded-lg overflow-hidden mr-2">
+            <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => setViewMode('list')}>
+              <List className="h-4 w-4" />
+            </Button>
+            <Button variant={viewMode === 'kanban' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => setViewMode('kanban')}>
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Импорт
+          </Button>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -232,8 +250,15 @@ const Patients = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
+      <ImportPatientsDialog open={isImportOpen} onOpenChange={setIsImportOpen} onImportComplete={() => fetchPatients()} />
+
+      {viewMode === 'kanban' ? (
+        <PatientKanban />
+      ) : (
+      <>
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -289,6 +314,8 @@ const Patients = () => {
             </TableBody>
           </Table>
         </div>
+      )}
+      </>
       )}
     </div>
   );

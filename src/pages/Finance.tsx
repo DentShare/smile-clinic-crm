@@ -25,7 +25,9 @@ import {
   Phone,
   Target,
   BarChart3,
-  Download
+  Download,
+  Wallet,
+  Receipt
 } from 'lucide-react';
 import { useExcelExport } from '@/hooks/use-excel-export';
 import {
@@ -47,6 +49,9 @@ import { formatCurrency } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 import { useStaffScope } from '@/hooks/use-staff-scope';
 import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
+import { CashRegisters } from '@/components/finance/CashRegisters';
+import { ExpenseTracker } from '@/components/finance/ExpenseTracker';
+import { CashFlowReport } from '@/components/finance/CashFlowReport';
 
 interface IncomeData {
   date: string;
@@ -131,7 +136,7 @@ const Finance = () => {
       if (effectiveDoctorIds !== null && effectiveDoctorIds.length > 0) {
         worksQuery = worksQuery.in('doctor_id', effectiveDoctorIds);
       } else if (effectiveDoctorIds !== null && effectiveDoctorIds.length === 0) {
-        worksQuery = worksQuery.in('doctor_id', ['__none__']); // no results
+        worksQuery = worksQuery.in('doctor_id', ['00000000-0000-0000-0000-000000000000']); // no results
       }
 
       const { data: worksData } = await worksQuery;
@@ -144,7 +149,7 @@ const Finance = () => {
           .from('appointments')
           .select('patient_id')
           .eq('clinic_id', clinic.id)
-          .in('doctor_id', effectiveDoctorIds.length > 0 ? effectiveDoctorIds : ['__none__']);
+          .in('doctor_id', effectiveDoctorIds.length > 0 ? effectiveDoctorIds : ['00000000-0000-0000-0000-000000000000']);
         scopedAppts?.forEach(a => scopedPatientIds.add(a.patient_id));
       }
 
@@ -160,7 +165,7 @@ const Finance = () => {
       if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
         paymentsQuery = paymentsQuery.in('patient_id', Array.from(scopedPatientIds));
       } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
-        paymentsQuery = paymentsQuery.in('patient_id', ['__none__']);
+        paymentsQuery = paymentsQuery.in('patient_id', ['00000000-0000-0000-0000-000000000000']);
       }
 
       const { data: paymentsData } = await paymentsQuery;
@@ -221,7 +226,7 @@ const Finance = () => {
       if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
         debtorsQuery = debtorsQuery.in('id', Array.from(scopedPatientIds));
       } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
-        debtorsQuery = debtorsQuery.in('id', ['__none__']);
+        debtorsQuery = debtorsQuery.in('id', ['00000000-0000-0000-0000-000000000000']);
       }
 
       const { data: debtorsData } = await debtorsQuery;
@@ -260,7 +265,7 @@ const Finance = () => {
       if (effectiveDoctorIds !== null && scopedPatientIds.size > 0) {
         plansQuery = plansQuery.in('patient_id', Array.from(scopedPatientIds));
       } else if (effectiveDoctorIds !== null && scopedPatientIds.size === 0) {
-        plansQuery = plansQuery.in('patient_id', ['__none__']);
+        plansQuery = plansQuery.in('patient_id', ['00000000-0000-0000-0000-000000000000']);
       }
 
       const { data: plansData } = await plansQuery;
@@ -398,7 +403,7 @@ const Finance = () => {
 
       {/* Tabs for different views */}
       <Tabs defaultValue="income" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="income" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             Доходы
@@ -413,6 +418,18 @@ const Finance = () => {
           <TabsTrigger value="forecast" className="gap-2">
             <Target className="h-4 w-4" />
             Прогноз
+          </TabsTrigger>
+          <TabsTrigger value="cash-registers" className="gap-2">
+            <Wallet className="h-4 w-4" />
+            Кассы
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="gap-2">
+            <Receipt className="h-4 w-4" />
+            Расходы
+          </TabsTrigger>
+          <TabsTrigger value="cashflow" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Отчёт ДДС
           </TabsTrigger>
         </TabsList>
 
@@ -666,6 +683,21 @@ const Finance = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Cash Registers Tab */}
+        <TabsContent value="cash-registers">
+          <CashRegisters />
+        </TabsContent>
+
+        {/* Expenses Tab */}
+        <TabsContent value="expenses">
+          <ExpenseTracker />
+        </TabsContent>
+
+        {/* Cash Flow Report Tab */}
+        <TabsContent value="cashflow">
+          <CashFlowReport />
         </TabsContent>
       </Tabs>
     </div>

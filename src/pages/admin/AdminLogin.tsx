@@ -64,12 +64,13 @@ const AdminLogin = () => {
       }
 
       // Directly verify super_admin role
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
         .eq('role', 'super_admin')
         .maybeSingle();
+      if (roleError) throw roleError;
 
       if (!roleData) {
         setError('У этого аккаунта нет прав Super Admin. Войдите с аккаунтом администратора.');

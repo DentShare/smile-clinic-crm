@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { InventoryItem, InventoryMovementType } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { WarehouseDocuments } from '@/components/inventory/WarehouseDocuments';
 
 const movementLabels: Record<InventoryMovementType, { label: string; color: string }> = {
   in: { label: 'Приход', color: 'text-green-600' },
@@ -246,6 +247,7 @@ const Inventory = () => {
         <TabsList>
           <TabsTrigger value="items">Материалы</TabsTrigger>
           <TabsTrigger value="movements">Движение</TabsTrigger>
+          <TabsTrigger value="documents">Документы</TabsTrigger>
         </TabsList>
 
         {/* Materials list */}
@@ -405,6 +407,11 @@ const Inventory = () => {
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        {/* Warehouse Documents Tab */}
+        <TabsContent value="documents" className="space-y-4">
+          <WarehouseDocuments />
         </TabsContent>
       </Tabs>
 

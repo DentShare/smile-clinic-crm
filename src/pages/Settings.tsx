@@ -7,13 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Loader2, Clock, FileText, MessageCircle, Receipt } from 'lucide-react';
+import { Building2, Users, CreditCard, Loader2, Clock, FileText, MessageCircle, Receipt, ClipboardList, Shield, HeartPulse } from 'lucide-react';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { DocumentTemplatesSettings } from '@/components/settings/DocumentTemplatesSettings';
 import { AssistantDoctorLinks } from '@/components/settings/AssistantDoctorLinks';
 import { MessengerSettings } from '@/components/settings/MessengerSettings';
 import { FiscalSettings } from '@/components/settings/FiscalSettings';
+import { RoomManager } from '@/components/settings/RoomManager';
+import { VisitTemplateManager } from '@/components/settings/VisitTemplateManager';
+import { PermissionMatrix } from '@/components/settings/PermissionMatrix';
+import { InsuranceCompanies } from '@/components/settings/InsuranceCompanies';
 
 const Settings = () => {
   const { clinic, isClinicAdmin } = useAuth();
@@ -88,6 +92,18 @@ const Settings = () => {
             <Receipt className="mr-2 h-4 w-4" />
             Фискализация
           </TabsTrigger>
+          <TabsTrigger value="templates">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Шаблоны
+          </TabsTrigger>
+          <TabsTrigger value="permissions">
+            <Shield className="mr-2 h-4 w-4" />
+            Права
+          </TabsTrigger>
+          <TabsTrigger value="insurance">
+            <HeartPulse className="mr-2 h-4 w-4" />
+            Страховые
+          </TabsTrigger>
           <TabsTrigger value="billing">
             <CreditCard className="mr-2 h-4 w-4" />
             Подписка
@@ -144,8 +160,9 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="schedule" className="mt-6">
+        <TabsContent value="schedule" className="mt-6 space-y-6">
           <WorkScheduleSettings />
+          <RoomManager />
         </TabsContent>
 
         <TabsContent value="team" className="mt-6 space-y-6">
@@ -163,6 +180,18 @@ const Settings = () => {
 
         <TabsContent value="fiscal" className="mt-6">
           <FiscalSettings />
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-6">
+          <VisitTemplateManager />
+        </TabsContent>
+
+        <TabsContent value="permissions" className="mt-6">
+          <PermissionMatrix />
+        </TabsContent>
+
+        <TabsContent value="insurance" className="mt-6">
+          <InsuranceCompanies />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-6">

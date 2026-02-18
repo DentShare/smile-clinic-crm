@@ -55,12 +55,13 @@ export function WorkScheduleSettings() {
   const fetchDoctors = async () => {
     if (!clinic?.id) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('clinic_id', clinic.id)
       .eq('is_active', true)
       .order('full_name');
+    if (error) console.error('Error fetching doctors:', error);
 
     if (data) {
       setDoctors(data as Profile[]);

@@ -46,6 +46,18 @@ export interface PaymentResult {
   error?: string;
 }
 
+export interface UnpaidWork {
+  id: string;
+  service_id: string | null;
+  service_name: string;
+  tooth_number: number | null;
+  total_cost: number;
+  remaining: number;
+  visit_date: string | null;
+  created_at: string;
+  appointment_id: string | null;
+}
+
 export function usePatientFinance(patientId?: string) {
   const { toast } = useToast();
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
@@ -290,6 +302,46 @@ export function usePatientFinance(patientId?: string) {
     }
   }, [fetchSummary, toast]);
 
+  // Fetch unpaid performed works
+  const fetchUnpaidWorks = useCallback(async (pId?: string): Promise<UnpaidWork[]> => {
+    const id = pId || patientId;
+    if (!id) return [];
+
+    try {
+      const { data, error } = await supabase.rpc('get_unpaid_performed_works', {
+        p_patient_id: id
+      });
+
+      if (error) throw error;
+      return (data as unknown as UnpaidWork[]) || [];
+    } catch (err) {
+      console.error('[usePatientFinance] fetchUnpaidWorks error:', err);
+      return [];
+    }
+  }, [patientId]);
+
+  // Allocate payment to performed works
+  const allocatePayment = useCallback(async (
+    clinicId: string,
+    paymentId: string,
+    allocations: { performed_work_id: string; amount: number }[]
+  ): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.rpc('allocate_payment_to_works', {
+        p_clinic_id: clinicId,
+        p_payment_id: paymentId,
+        p_allocations: allocations as any
+      });
+
+      if (error) throw error;
+      const result = data as unknown as { success: boolean };
+      return result.success;
+    } catch (err) {
+      console.error('[usePatientFinance] allocatePayment error:', err);
+      return false;
+    }
+  }, []);
+
   // Calculate balance directly
   const calculateBalance = useCallback(async (pId?: string): Promise<number | null> => {
     const id = pId || patientId;
@@ -321,5 +373,7 @@ export function usePatientFinance(patientId?: string) {
     completeServices,
     processPayment,
     calculateBalance,
+    fetchUnpaidWorks,
+    allocatePayment,
   };
 }

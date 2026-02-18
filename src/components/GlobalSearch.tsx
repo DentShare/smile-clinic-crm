@@ -80,13 +80,13 @@ export function GlobalSearch() {
       setPatients([]);
       return;
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('patients')
       .select('id, full_name, phone')
       .eq('clinic_id', clinic.id)
       .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
       .limit(5);
-    setPatients(data || []);
+    if (!error) setPatients(data || []);
   }, [clinic?.id]);
 
   useEffect(() => {

@@ -1,24 +1,26 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
-import { Clock, DollarSign, UserCheck, CalendarClock, GripVertical, CheckCircle2 } from 'lucide-react';
+import { Clock, DollarSign, UserCheck, CalendarClock, GripVertical, CheckCircle2, XCircle, UserX, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 import type { Appointment, Patient, Profile } from '@/types/database';
 import { CompleteVisitDialog } from '@/components/appointments/CompleteVisitDialog';
+import { getAppointmentStyle } from '@/lib/doctor-colors';
 
-const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  scheduled: { label: 'Запланирован', color: 'bg-info/10 text-info border-info/20', icon: CalendarClock },
-  confirmed: { label: 'Подтверждён', color: 'bg-success/10 text-success border-success/20', icon: Clock },
-  in_progress: { label: 'В процессе', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
-  completed: { label: 'Завершён', color: 'bg-muted text-muted-foreground border-muted', icon: Clock },
-  cancelled: { label: 'Отменён', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: Clock },
-  no_show: { label: 'Не пришёл', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: Clock },
+const statusLabels: Record<string, { label: string; icon: React.ElementType }> = {
+  scheduled: { label: 'Запланирован', icon: CalendarClock },
+  confirmed: { label: 'Подтверждён', icon: Clock },
+  in_progress: { label: 'Пришёл', icon: UserCheck },
+  completed: { label: 'Завершён', icon: CheckCircle2 },
+  cancelled: { label: 'Отменён', icon: Clock },
+  no_show: { label: 'Не пришёл', icon: Clock },
 };
 
 interface DraggableAppointmentProps {
@@ -29,6 +31,7 @@ interface DraggableAppointmentProps {
   onHover: (hovered: boolean) => void;
   isDraggingDisabled?: boolean;
   onStatusChange?: () => void;
+  doctorColorIndex?: number;
 }
 
 export function DraggableAppointment({
@@ -39,8 +42,10 @@ export function DraggableAppointment({
   onHover,
   isDraggingDisabled = false,
   onStatusChange,
+  doctorColorIndex = 0,
 }: DraggableAppointmentProps) {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appointment.id,
@@ -48,11 +53,13 @@ export function DraggableAppointment({
     disabled: isDraggingDisabled || ['completed', 'cancelled', 'no_show'].includes(appointment.status),
   });
 
-  const status = statusConfig[appointment.status] || statusConfig.scheduled;
-  const StatusIcon = status.icon;
+  const statusInfo = statusLabels[appointment.status] || statusLabels.scheduled;
+  const StatusIcon = statusInfo.icon;
+  const colorStyle = getAppointmentStyle(doctorColorIndex, appointment.status);
   const hasDebt = (appointment.patient?.balance ?? 0) < 0;
   const canDrag = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
   const canComplete = !['completed', 'cancelled', 'no_show'].includes(appointment.status);
+  const isPreArrival = appointment.status === 'scheduled' || appointment.status === 'confirmed';
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('ru-RU', {
@@ -66,21 +73,39 @@ export function DraggableAppointment({
     height: `${Math.max(height, 40)}px`,
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : isHovered ? 30 : 20,
+    zIndex: isDragging ? 50 : popoverOpen ? 40 : isHovered ? 30 : 20,
+    backgroundColor: colorStyle.bg,
+    borderColor: colorStyle.border,
+    color: colorStyle.text,
+  };
+
+  const handleStatusUpdate = async (status: string, message: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status })
+        .eq('id', appointment.id);
+      if (error) throw error;
+      toast.success(message);
+      setPopoverOpen(false);
+      onStatusChange?.();
+    } catch (err) {
+      console.error(err);
+      toast.error('Ошибка');
+    }
   };
 
   return (
     <>
-    <Tooltip open={isHovered && !isDragging}>
-      <TooltipTrigger asChild>
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverTrigger asChild>
         <div
           ref={setNodeRef}
           className={cn(
             "absolute left-1 right-1 rounded-md border p-2 cursor-grab transition-shadow overflow-hidden touch-none",
-            status.color,
             isDragging && "cursor-grabbing shadow-xl ring-2 ring-primary",
-            isHovered && !isDragging && "ring-2 ring-primary ring-offset-1 shadow-lg",
-            !canDrag && "cursor-default"
+            (isHovered || popoverOpen) && !isDragging && "ring-2 ring-primary ring-offset-1 shadow-lg",
+            !canDrag && "cursor-pointer"
           )}
           style={style}
           onMouseEnter={() => onHover(true)}
@@ -93,7 +118,7 @@ export function DraggableAppointment({
               <GripVertical className="h-3 w-3" />
             </div>
           )}
-          
+
           {/* Main content */}
           <div className="flex items-start gap-1.5">
             <StatusIcon className="h-3 w-3 mt-0.5 shrink-0" />
@@ -113,85 +138,106 @@ export function DraggableAppointment({
             )}
           </div>
         </div>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="p-0 w-64">
-        <div className="p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">{appointment.patient?.full_name}</span>
-            <Badge variant="outline" className={cn("text-xs", status.color)}>
-              {status.label}
-            </Badge>
-          </div>
-          
-          <div className="text-sm space-y-1">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-            </div>
-            
-            {appointment.complaints && (
-              <p className="text-xs">{appointment.complaints}</p>
-            )}
-            
-            {hasDebt && (
-              <div className="flex items-center gap-2 text-destructive">
-                <DollarSign className="h-3 w-3" />
-                <CurrencyDisplay amount={Math.abs(appointment.patient.balance)} size="sm" />
-                <span className="text-xs">задолженность</span>
-              </div>
-            )}
+      </PopoverTrigger>
+      <PopoverContent side="right" className="w-64 p-3 space-y-2" align="start">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">{appointment.patient?.full_name}</span>
+          <Badge
+            variant="outline"
+            className="text-xs"
+            style={{ backgroundColor: colorStyle.bg, borderColor: colorStyle.border, color: colorStyle.text }}
+          >
+            {statusInfo.label}
+          </Badge>
+        </div>
+
+        <div className="text-sm space-y-1">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
           </div>
 
-          {canDrag && (
-            <p className="text-xs text-muted-foreground pt-1 border-t">
-              Перетащите для изменения времени
-            </p>
+          {appointment.doctor && (
+            <p className="text-xs text-muted-foreground">{appointment.doctor.full_name}</p>
           )}
 
-          {/* Quick Actions */}
-          <div className="flex gap-1 pt-2 border-t">
-            {(appointment.status === 'scheduled' || appointment.status === 'confirmed') && (
-              <Button 
-                size="sm" 
-                variant="secondary"
+          {appointment.complaints && (
+            <p className="text-xs">{appointment.complaints}</p>
+          )}
+
+          {hasDebt && (
+            <div className="flex items-center gap-2 text-destructive">
+              <DollarSign className="h-3 w-3" />
+              <CurrencyDisplay amount={Math.abs(appointment.patient.balance)} size="sm" />
+              <span className="text-xs">задолженность</span>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        {canComplete && (
+          <div className="flex flex-col gap-1 pt-2 border-t">
+            <div className="flex gap-1">
+              {isPreArrival && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1 h-7 text-xs gap-1"
+                  onClick={() => handleStatusUpdate('in_progress', 'Пациент пришёл')}
+                >
+                  <UserCheck className="h-3 w-3" />
+                  Пришёл
+                </Button>
+              )}
+              <Button
+                size="sm"
                 className="flex-1 h-7 text-xs gap-1"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  try {
-                    const { error } = await supabase
-                      .from('appointments')
-                      .update({ status: 'in_progress' })
-                      .eq('id', appointment.id);
-                    if (error) throw error;
-                    toast.success('Пациент пришёл');
-                    onStatusChange?.();
-                  } catch (err) {
-                    console.error(err);
-                    toast.error('Ошибка');
-                  }
-                }}
-              >
-                <UserCheck className="h-3 w-3" />
-                Пришёл
-              </Button>
-            )}
-            {canComplete && (
-              <Button 
-                size="sm" 
-                className="flex-1 h-7 text-xs gap-1"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
+                  setPopoverOpen(false);
                   setCompleteDialogOpen(true);
                 }}
               >
                 <CheckCircle2 className="h-3 w-3" />
                 Завершить
               </Button>
-            )}
+            </div>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                onClick={() => handleStatusUpdate('cancelled', 'Запись отменена')}
+              >
+                <XCircle className="h-3 w-3" />
+                Отмена
+              </Button>
+              {isPreArrival && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 h-7 text-xs gap-1 text-orange-600 hover:text-orange-600"
+                  onClick={() => handleStatusUpdate('no_show', 'Отмечен как "Не пришёл"')}
+                >
+                  <UserX className="h-3 w-3" />
+                  Не пришёл
+                </Button>
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Patient link */}
+        <div className="pt-1 border-t">
+          <Link
+            to={`/patients/${appointment.patient_id}`}
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Карта пациента
+          </Link>
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
 
     <CompleteVisitDialog
       open={completeDialogOpen}

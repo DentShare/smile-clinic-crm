@@ -313,19 +313,25 @@ const Packages = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {patientPackages.map(pp => (
-                    <TableRow key={pp.id}>
-                      <TableCell className="font-medium">{pp.patient?.full_name}</TableCell>
-                      <TableCell>{pp.package?.name}</TableCell>
-                      <TableCell className="text-right"><CurrencyDisplay amount={pp.amount_paid} /></TableCell>
-                      <TableCell>{pp.expires_at ? format(new Date(pp.expires_at), 'dd.MM.yyyy') : '—'}</TableCell>
-                      <TableCell>
-                        <Badge variant={pp.status === 'active' ? 'default' : 'secondary'}>
-                          {pp.status === 'active' ? 'Активен' : pp.status === 'expired' ? 'Истёк' : pp.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {patientPackages.map(pp => {
+                    const isExpired = pp.expires_at && new Date(pp.expires_at) < new Date();
+                    const effectiveStatus = isExpired ? 'expired' : pp.status;
+                    return (
+                      <TableRow key={pp.id}>
+                        <TableCell className="font-medium">{pp.patient?.full_name}</TableCell>
+                        <TableCell>{pp.package?.name}</TableCell>
+                        <TableCell className="text-right"><CurrencyDisplay amount={pp.amount_paid} /></TableCell>
+                        <TableCell className={isExpired ? 'text-destructive' : ''}>
+                          {pp.expires_at ? format(new Date(pp.expires_at), 'dd.MM.yyyy') : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={effectiveStatus === 'active' ? 'default' : 'secondary'}>
+                            {effectiveStatus === 'active' ? 'Активен' : effectiveStatus === 'expired' ? 'Истёк' : effectiveStatus}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {patientPackages.length === 0 && (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Нет продаж</TableCell></TableRow>
                   )}

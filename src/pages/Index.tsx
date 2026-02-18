@@ -34,9 +34,11 @@ const Index = () => {
       <Testimonials />
       <Pricing />
       <Footer />
+      {/* TODO: включить после подключения CRM / ИИ чат-бота
       {clinicInfo && (
         <ChatWidget clinicId={clinicInfo.id} clinicName={clinicInfo.name} />
       )}
+      */}
     </div>
   );
 };

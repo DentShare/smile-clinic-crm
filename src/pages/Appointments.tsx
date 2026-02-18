@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { DoctorFilterTabs } from '@/components/dashboard/DoctorFilterTabs';
 import { useAppointmentNotifications } from '@/hooks/use-appointment-notifications';
 import { useClinicWorkingHoursRange } from '@/hooks/use-working-hours';
 import { useStaffScope } from '@/hooks/use-staff-scope';
+import { buildDoctorColorMap } from '@/lib/doctor-colors';
 
 const SLOT_HEIGHT = 60;
 
@@ -37,6 +38,18 @@ const Appointments = () => {
 
   // Get clinic working hours
   const { workStart, workEnd } = useClinicWorkingHoursRange();
+
+  // Build color map from allStaff (same order as DoctorFilterTabs) for consistent colors
+  const doctorColorMap = useMemo(
+    () => buildDoctorColorMap(allStaff.map(s => s.id)),
+    [allStaff]
+  );
+
+  // Filter doctors for the grid: when a specific doctor is selected, only show that column
+  const filteredDoctors = useMemo(() => {
+    if (effectiveDoctorIds === null) return doctors; // show all
+    return doctors.filter(d => effectiveDoctorIds.includes(d.id));
+  }, [doctors, effectiveDoctorIds]);
 
   const fetchAppointments = async () => {
     if (!clinic?.id) return;
@@ -88,15 +101,23 @@ const Appointments = () => {
   const fetchDoctors = async () => {
     if (!clinic?.id) return;
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('clinic_id', clinic.id)
-      .not('specialization', 'is', null);
+    // Fetch doctor role user_ids to filter out nurses/assistants
+    const [profilesRes, rolesRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .eq('is_active', true)
+        .not('specialization', 'is', null),
+      supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'doctor'),
+    ]);
 
-    if (data) {
-      setDoctors(data as Profile[]);
-    }
+    const doctorUserIds = new Set((rolesRes.data || []).map(r => r.user_id));
+    const doctorProfiles = (profilesRes.data || []).filter(p => doctorUserIds.has(p.user_id));
+    setDoctors(doctorProfiles as Profile[]);
   };
 
   useEffect(() => {
@@ -234,22 +255,26 @@ const Appointments = () => {
             ) : viewMode === 'day' ? (
               <ScheduleGrid
                 appointments={appointments}
-                doctors={doctors}
+                doctors={filteredDoctors}
                 selectedDate={selectedDate}
                 workStart={workStart}
                 workEnd={workEnd}
                 slotHeight={SLOT_HEIGHT}
                 onAppointmentUpdated={fetchAppointments}
                 onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
+                doctorColorMap={doctorColorMap}
               />
             ) : (
               <WeeklyScheduleGrid
                 appointments={appointments}
+                doctors={filteredDoctors}
                 selectedDate={selectedDate}
                 workStart={workStart}
                 workEnd={workEnd}
                 slotHeight={SLOT_HEIGHT}
                 onCreateAppointment={(h, m, d) => handleCreateAppointment(h, m, d)}
+                onAppointmentUpdated={fetchAppointments}
+                doctorColorMap={doctorColorMap}
               />
             )}
           </CardContent>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,19 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Calculator, Settings, FileText, Loader2, Plus, Save, Trash2, TrendingUp } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import {
+  Calculator, Settings, FileText, Loader2, Plus, Save, Trash2,
+  TrendingUp, AlertTriangle, Users,
+} from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+interface MissingSalaryMonth {
+  doctor_id: string;
+  doctor_name: string;
+  period_start: string;
+}
+
 const Salary = () => {
-  const { clinic, profile, hasRole } = useAuth();
+  const { clinic, hasRole } = useAuth();
   const isAdmin = hasRole('clinic_admin');
 
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -30,18 +40,27 @@ const Salary = () => {
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [periodMonth, setPeriodMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   // Form state
   const [baseSalary, setBaseSalary] = useState(0);
   const [defaultCommission, setDefaultCommission] = useState(30);
+  const [autoGenerate, setAutoGenerate] = useState(false);
+
+  // Bulk calculation state
+  const [selectedBulkDoctors, setSelectedBulkDoctors] = useState<Set<string>>(new Set());
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+
+  // Missing months banner
+  const [missingMonths, setMissingMonths] = useState<MissingSalaryMonth[]>([]);
+  const [generatingMissing, setGeneratingMissing] = useState(false);
 
   useEffect(() => {
     if (!clinic?.id) return;
     fetchDoctors();
     fetchCategories();
     fetchReports();
+    if (isAdmin) fetchMissingMonths();
   }, [clinic?.id]);
 
   useEffect(() => {
@@ -49,13 +68,13 @@ const Salary = () => {
   }, [selectedDoctor]);
 
   const fetchDoctors = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, specialization, user_id')
       .eq('clinic_id', clinic!.id)
       .eq('is_active', true);
-    
-    // Filter to doctors only
+    if (error) console.error('Error fetching profiles:', error);
+
     if (data) {
       const doctorProfiles: any[] = [];
       for (const p of data) {
@@ -76,35 +95,36 @@ const Salary = () => {
   };
 
   const fetchCategories = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('service_categories')
       .select('*')
       .eq('clinic_id', clinic!.id)
       .order('sort_order');
+    if (error) console.error('Error fetching categories:', error);
     setCategories(data || []);
   };
 
   const fetchSettings = async (doctorId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('salary_settings')
       .select('*')
       .eq('clinic_id', clinic!.id)
       .eq('doctor_id', doctorId)
       .maybeSingle();
+    if (error) console.error('Error fetching salary settings:', error);
 
     if (data) {
       setSettings(data);
       setBaseSalary(data.base_salary);
       setDefaultCommission(data.default_commission_percent);
+      setAutoGenerate(data.auto_generate || false);
 
-      // Fetch category rates
       const { data: rates } = await supabase
         .from('salary_category_rates')
         .select('*, service_categories:category_id(name)')
         .eq('salary_setting_id', data.id);
       setCategoryRates(rates || []);
 
-      // Fetch thresholds
       const { data: thresh } = await supabase
         .from('salary_thresholds')
         .select('*')
@@ -115,19 +135,34 @@ const Salary = () => {
       setSettings(null);
       setBaseSalary(0);
       setDefaultCommission(30);
+      setAutoGenerate(false);
       setCategoryRates([]);
       setThresholds([]);
     }
   };
 
   const fetchReports = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('salary_reports')
       .select('*, doctor:doctor_id(full_name)')
       .eq('clinic_id', clinic!.id)
       .order('period_start', { ascending: false })
       .limit(50);
+    if (error) console.error('Error fetching salary reports:', error);
     setReports(data || []);
+  };
+
+  const fetchMissingMonths = async () => {
+    if (!clinic?.id) return;
+    try {
+      const { data, error } = await supabase.rpc('get_missing_salary_months', {
+        p_clinic_id: clinic.id,
+      });
+      if (error) throw error;
+      setMissingMonths((data || []) as MissingSalaryMonth[]);
+    } catch (err) {
+      console.error('Error fetching missing months:', err);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -135,12 +170,14 @@ const Salary = () => {
     setIsSaving(true);
 
     try {
-      let settingId = settings?.id;
-
       if (settings) {
         await supabase
           .from('salary_settings')
-          .update({ base_salary: baseSalary, default_commission_percent: defaultCommission })
+          .update({
+            base_salary: baseSalary,
+            default_commission_percent: defaultCommission,
+            auto_generate: autoGenerate,
+          })
           .eq('id', settings.id);
       } else {
         const { data, error } = await supabase
@@ -150,11 +187,11 @@ const Salary = () => {
             doctor_id: selectedDoctor,
             base_salary: baseSalary,
             default_commission_percent: defaultCommission,
+            auto_generate: autoGenerate,
           })
           .select()
           .single();
         if (error) throw error;
-        settingId = data.id;
         setSettings(data);
       }
 
@@ -165,67 +202,112 @@ const Salary = () => {
     setIsSaving(false);
   };
 
-  const handleGenerateReport = async () => {
-    if (!selectedDoctor || !clinic?.id) return;
-    setIsGenerating(true);
+  // Single-doctor report via RPC
+  const handleGenerateReport = async (doctorId: string) => {
+    if (!clinic?.id) return;
 
     try {
       const [year, month] = periodMonth.split('-').map(Number);
-      const periodStart = startOfMonth(new Date(year, month - 1));
-      const periodEnd = endOfMonth(new Date(year, month - 1));
+      const pStart = startOfMonth(new Date(year, month - 1));
+      const pEnd = endOfMonth(new Date(year, month - 1));
 
-      // Fetch performed works for this doctor in this period
-      const { data: works } = await supabase
-        .from('performed_works')
-        .select('*, services:service_id(category_id)')
-        .eq('clinic_id', clinic.id)
-        .eq('doctor_id', selectedDoctor)
-        .gte('created_at', periodStart.toISOString())
-        .lte('created_at', periodEnd.toISOString());
-
-      const totalRevenue = (works || []).reduce((sum, w) => sum + (w.total || 0), 0);
-      const worksCount = works?.length || 0;
-
-      // Calculate commission
-      let commissionAmount = 0;
-      for (const work of works || []) {
-        const catRate = categoryRates.find(cr => cr.category_id === work.services?.category_id);
-        const rate = catRate ? catRate.commission_percent : defaultCommission;
-        commissionAmount += (work.total || 0) * rate / 100;
-      }
-
-      // Calculate bonus from thresholds
-      let bonusAmount = 0;
-      for (const t of thresholds) {
-        if (totalRevenue >= t.min_revenue) {
-          bonusAmount = Math.max(bonusAmount, totalRevenue * t.bonus_percent / 100 + t.bonus_fixed);
-        }
-      }
-
-      const totalSalary = baseSalary + commissionAmount + bonusAmount;
-
-      const { error } = await supabase
-        .from('salary_reports')
-        .insert({
-          clinic_id: clinic.id,
-          doctor_id: selectedDoctor,
-          period_start: format(periodStart, 'yyyy-MM-dd'),
-          period_end: format(periodEnd, 'yyyy-MM-dd'),
-          base_salary: baseSalary,
-          commission_amount: commissionAmount,
-          bonus_amount: bonusAmount,
-          total_salary: totalSalary,
-          total_revenue: totalRevenue,
-          works_count: worksCount,
-        });
+      const { data, error } = await supabase.rpc('generate_salary_report', {
+        p_clinic_id: clinic.id,
+        p_doctor_id: doctorId,
+        p_period_start: format(pStart, 'yyyy-MM-dd'),
+        p_period_end: format(pEnd, 'yyyy-MM-dd'),
+      });
 
       if (error) throw error;
-      toast.success('Отчёт по ЗП сформирован');
+      return data as string;
+    } catch (e: any) {
+      throw e;
+    }
+  };
+
+  // Bulk generate for selected doctors
+  const handleBulkGenerate = async () => {
+    if (!clinic?.id || selectedBulkDoctors.size === 0) return;
+    setBulkGenerating(true);
+
+    try {
+      const [year, month] = periodMonth.split('-').map(Number);
+      const pStart = startOfMonth(new Date(year, month - 1));
+      const pEnd = endOfMonth(new Date(year, month - 1));
+
+      const { data, error } = await supabase.rpc('bulk_generate_salary_reports', {
+        p_clinic_id: clinic.id,
+        p_doctor_ids: Array.from(selectedBulkDoctors),
+        p_period_start: format(pStart, 'yyyy-MM-dd'),
+        p_period_end: format(pEnd, 'yyyy-MM-dd'),
+      });
+
+      if (error) throw error;
+
+      const result = data as { generated: number; errors: any[] };
+      if (result.errors?.length > 0) {
+        toast.warning(`Рассчитано: ${result.generated}, ошибок: ${result.errors.length}`);
+      } else {
+        toast.success(`Рассчитана ЗП для ${result.generated} врачей`);
+      }
+
+      fetchReports();
+      setSelectedBulkDoctors(new Set());
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка массового расчёта');
+    }
+    setBulkGenerating(false);
+  };
+
+  // Generate missing months
+  const handleGenerateMissing = async () => {
+    if (!clinic?.id || missingMonths.length === 0) return;
+    setGeneratingMissing(true);
+
+    try {
+      const doctorIds = missingMonths.map(m => m.doctor_id);
+      const periodStart = missingMonths[0].period_start;
+      // Calculate period_end from period_start
+      const pStart = new Date(periodStart);
+      const pEnd = endOfMonth(pStart);
+
+      const { data, error } = await supabase.rpc('bulk_generate_salary_reports', {
+        p_clinic_id: clinic.id,
+        p_doctor_ids: doctorIds,
+        p_period_start: periodStart,
+        p_period_end: format(pEnd, 'yyyy-MM-dd'),
+      });
+
+      if (error) throw error;
+
+      const result = data as { generated: number; errors: any[] };
+      toast.success(`Рассчитана ЗП для ${result.generated} врачей`);
+      setMissingMonths([]);
       fetchReports();
     } catch (e: any) {
-      toast.error(e.message || 'Ошибка формирования отчёта');
+      toast.error(e.message || 'Ошибка расчёта');
     }
-    setIsGenerating(false);
+    setGeneratingMissing(false);
+  };
+
+  const toggleBulkDoctor = (doctorId: string) => {
+    setSelectedBulkDoctors(prev => {
+      const next = new Set(prev);
+      if (next.has(doctorId)) {
+        next.delete(doctorId);
+      } else {
+        next.add(doctorId);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllBulkDoctors = () => {
+    if (selectedBulkDoctors.size === doctors.length) {
+      setSelectedBulkDoctors(new Set());
+    } else {
+      setSelectedBulkDoctors(new Set(doctors.map(d => d.id)));
+    }
   };
 
   if (isLoading) {
@@ -238,6 +320,30 @@ const Salary = () => {
         <h1 className="text-3xl font-bold">Расчёт зарплаты</h1>
         <p className="text-muted-foreground">Настройка комиссий и формирование отчётов</p>
       </div>
+
+      {/* Missing months banner */}
+      {isAdmin && missingMonths.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              За {format(new Date(missingMonths[0].period_start), 'LLLL yyyy', { locale: ru })} не рассчитана ЗП
+              для {missingMonths.length} {missingMonths.length === 1 ? 'врача' : missingMonths.length < 5 ? 'врачей' : 'врачей'}:
+              {' '}{missingMonths.map(m => m.doctor_name).join(', ')}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleGenerateMissing}
+              disabled={generatingMissing}
+              className="shrink-0"
+            >
+              {generatingMissing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}
+              Рассчитать сейчас
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue={isAdmin ? 'settings' : 'reports'}>
         <TabsList>
@@ -294,6 +400,18 @@ const Salary = () => {
                         onChange={e => setDefaultCommission(Number(e.target.value))}
                         min={0}
                         max={100}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Авто-расчёт 1-го числа</Label>
+                        <p className="text-xs text-muted-foreground">
+                          ЗП рассчитывается автоматически каждый месяц
+                        </p>
+                      </div>
+                      <Switch
+                        checked={autoGenerate}
+                        onCheckedChange={setAutoGenerate}
                       />
                     </div>
                     <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full">
@@ -358,7 +476,7 @@ const Salary = () => {
                   <CardContent>
                     {settings ? (
                       <div className="space-y-3">
-                        {thresholds.map((t, idx) => (
+                        {thresholds.map((t) => (
                           <div key={t.id} className="flex items-center gap-3">
                             <span className="text-sm text-muted-foreground">от</span>
                             <Input type="number" className="w-40" value={t.min_revenue} onChange={async (e) => {
@@ -398,24 +516,60 @@ const Salary = () => {
               </div>
             )}
 
-            {/* Generate report */}
-            {selectedDoctor && settings && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Сформировать отчёт</CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-end gap-4">
+            {/* Bulk report generation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Сформировать отчёты
+                </CardTitle>
+                <CardDescription>Выберите врачей и период для массового расчёта ЗП</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-end gap-4">
                   <div className="space-y-2">
                     <Label>Период</Label>
                     <Input type="month" value={periodMonth} onChange={e => setPeriodMonth(e.target.value)} />
                   </div>
-                  <Button onClick={handleGenerateReport} disabled={isGenerating}>
-                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}
-                    Рассчитать
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+
+                {/* Doctor checkboxes */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedBulkDoctors.size === doctors.length && doctors.length > 0}
+                      onCheckedChange={toggleAllBulkDoctors}
+                    />
+                    <Label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                      Выбрать всех ({doctors.length})
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {doctors.map(d => (
+                      <div key={d.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`doc-${d.id}`}
+                          checked={selectedBulkDoctors.has(d.id)}
+                          onCheckedChange={() => toggleBulkDoctor(d.id)}
+                        />
+                        <Label htmlFor={`doc-${d.id}`} className="text-sm cursor-pointer truncate">
+                          {d.full_name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleBulkGenerate}
+                  disabled={bulkGenerating || selectedBulkDoctors.size === 0}
+                >
+                  {bulkGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />}
+                  Рассчитать ({selectedBulkDoctors.size})
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         )}
 

@@ -5,6 +5,7 @@ import { ToothStatus } from '@/types/database';
 import AnatomicalTooth from './AnatomicalTooth';
 import ToothStatusLegend from './ToothStatusLegend';
 import ToothStatusEditor from './ToothStatusEditor';
+import { ImplantPassportDialog } from '@/components/implants/ImplantPassportDialog';
 import { supabase } from '@/integrations/supabase/clientRuntime';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -43,6 +44,8 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dentitionMode, setDentitionMode] = useState<DentitionMode>('permanent');
+  const [implantDialogOpen, setImplantDialogOpen] = useState(false);
+  const [implantDialogTooth, setImplantDialogTooth] = useState<number | undefined>();
 
   // Calculate patient age and set default dentition mode
   useEffect(() => {
@@ -165,6 +168,11 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
       console.error('Error saving tooth status:', error);
       toast.error('Ошибка сохранения статуса');
     }
+  };
+
+  const handleOpenImplantPassport = (toothNum: number) => {
+    setImplantDialogTooth(toothNum);
+    setImplantDialogOpen(true);
   };
 
   // Determine which teeth to show based on mixed mode
@@ -332,8 +340,17 @@ const ToothChart = ({ patientId, readOnly = false, patientBirthDate }: ToothChar
           currentStatus={selectedTooth ? getToothStatus(selectedTooth) : 'healthy'}
           currentNotes={selectedTooth ? getToothNotes(selectedTooth) : ''}
           onSave={handleSaveStatus}
+          onOpenImplantPassport={handleOpenImplantPassport}
         />
       )}
+
+      {/* Implant Passport Dialog */}
+      <ImplantPassportDialog
+        open={implantDialogOpen}
+        onOpenChange={setImplantDialogOpen}
+        patientId={patientId}
+        toothNumber={implantDialogTooth}
+      />
     </div>
   );
 };

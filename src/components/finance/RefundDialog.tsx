@@ -71,11 +71,12 @@ export function RefundDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, clinic_id')
         .eq('user_id', user.id)
         .maybeSingle();
+      if (profileError) throw profileError;
 
       if (!profile?.clinic_id) throw new Error('No clinic associated');
 

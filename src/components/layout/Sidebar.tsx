@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions, type PermissionKey } from '@/hooks/use-permissions';
 import {
   LayoutDashboard,
   Users,
@@ -21,6 +22,7 @@ import {
   ShoppingBag,
   MessageCircle,
   Shield,
+  ListTodo,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,26 +33,28 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: string[];
+  permission?: PermissionKey;
 }
 
 const clinicNavItems: NavItem[] = [
   { title: 'Дашборд', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Пациенты', href: '/patients', icon: Users },
-  { title: 'Расписание', href: '/appointments', icon: Calendar },
-  { title: 'Лист ожидания', href: '/waiting-list', icon: Clock, roles: ['clinic_admin', 'reception', 'doctor'] },
+  { title: 'Пациенты', href: '/patients', icon: Users, permission: 'patients.view' },
+  { title: 'Расписание', href: '/appointments', icon: Calendar, permission: 'schedule.view' },
+  { title: 'Лист ожидания', href: '/waiting-list', icon: Clock, permission: 'schedule.view' },
   { title: 'Зубная формула', href: '/tooth-chart', icon: Smile, roles: ['clinic_admin', 'doctor'] },
   { title: 'Услуги', href: '/services', icon: Stethoscope, roles: ['clinic_admin', 'reception'] },
-  { title: 'Абонементы', href: '/packages', icon: ShoppingBag, roles: ['clinic_admin', 'reception'] },
-  { title: 'Склад', href: '/inventory', icon: Package, roles: ['clinic_admin', 'reception'] },
-  { title: 'Финансы', href: '/finance', icon: CreditCard, roles: ['clinic_admin', 'reception'] },
+  { title: 'Абонементы', href: '/packages', icon: ShoppingBag, permission: 'finance.view' },
+  { title: 'Склад', href: '/inventory', icon: Package, permission: 'inventory.view' },
+  { title: 'Финансы', href: '/finance', icon: CreditCard, permission: 'finance.view' },
   { title: 'Расчёт ЗП', href: '/salary', icon: Calculator, roles: ['clinic_admin', 'doctor'] },
-  { title: 'Лояльность', href: '/loyalty', icon: Gift, roles: ['clinic_admin', 'reception'] },
+  { title: 'Лояльность', href: '/loyalty', icon: Gift, permission: 'finance.view' },
   { title: 'Рассылки', href: '/campaigns', icon: Send, roles: ['clinic_admin', 'reception'] },
   { title: 'Онлайн-чат', href: '/live-chat', icon: MessageCircle, roles: ['clinic_admin', 'reception'] },
+  { title: 'Задачи', href: '/tasks', icon: ListTodo },
   { title: 'Документы', href: '/documents', icon: FileText, roles: ['clinic_admin', 'reception'] },
-  { title: 'Аналитика', href: '/analytics', icon: BarChart3, roles: ['clinic_admin'] },
+  { title: 'Аналитика', href: '/analytics', icon: BarChart3, permission: 'reports.view' },
   { title: 'Журнал аудита', href: '/audit-log', icon: Shield, roles: ['clinic_admin'] },
-  { title: 'Настройки', href: '/settings', icon: Settings, roles: ['clinic_admin'] },
+  { title: 'Настройки', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];
 
 const superAdminNavItems: NavItem[] = [
@@ -66,17 +70,28 @@ interface SidebarProps {
 
 export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const location = useLocation();
-  const { profile, clinic, isSuperAdmin, signOut, hasRole } = useAuth();
+  const { profile, clinic, isSuperAdmin, isClinicAdmin, signOut, hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
 
   // In the CRM layout (DashboardLayout), always show clinic navigation
   // Super admin nav is only used inside the AdminLayout
   const navItems = clinicNavItems;
 
   const filteredNavItems = navItems.filter(item => {
-    if (!item.roles) return true;
-    // Super admins in CRM context can see everything
-    if (isSuperAdmin) return true;
-    return item.roles.some(role => hasRole(role as any));
+    // Super admins and clinic admins see everything
+    if (isSuperAdmin || isClinicAdmin) return true;
+
+    // Check permission-based access first
+    if (item.permission) {
+      return hasPermission(item.permission);
+    }
+
+    // Fall back to role-based access
+    if (item.roles) {
+      return item.roles.some(role => hasRole(role as any));
+    }
+
+    return true;
   });
 
   return (

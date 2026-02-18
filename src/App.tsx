@@ -37,6 +37,7 @@ const BulkCampaigns = lazy(() => import("./pages/BulkCampaigns"));
 const Loyalty = lazy(() => import("./pages/Loyalty"));
 const Packages = lazy(() => import("./pages/Packages"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
+const Tasks = lazy(() => import("./pages/Tasks"));
 const PublicBooking = lazy(() => import("./pages/PublicBooking"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -130,6 +131,9 @@ const App = () => (
                   } />
                   <Route path="/packages" element={
                     <ProtectedRoute requiredRoles={['clinic_admin', 'reception']}><Packages /></ProtectedRoute>
+                  } />
+                  <Route path="/tasks" element={
+                    <ProtectedRoute requiredRoles={['clinic_admin', 'doctor', 'reception']}><Tasks /></ProtectedRoute>
                   } />
                   <Route path="/audit-log" element={
                     <ProtectedRoute requiredRoles={['clinic_admin']}><AuditLog /></ProtectedRoute>

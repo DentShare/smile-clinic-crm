@@ -127,21 +127,21 @@ const LiveChat = () => {
 
   const loadConversations = async () => {
     if (!clinic?.id) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('chat_conversations')
       .select('*')
       .eq('clinic_id', clinic.id)
       .order('last_message_at', { ascending: false });
-    if (data) setConversations(data);
+    if (!error && data) setConversations(data);
   };
 
   const loadMessages = async (convId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true });
-    if (data) setMessages(data as Message[]);
+    if (!error && data) setMessages(data as Message[]);
   };
 
   const sendMessage = async () => {
@@ -162,15 +162,16 @@ const LiveChat = () => {
     setMessages((prev) => [...prev, optimistic]);
 
     // Store message in DB
-    await supabase.from('chat_messages').insert({
+    const { error: msgError } = await supabase.from('chat_messages').insert({
       conversation_id: selectedConvId,
       sender_type: 'operator',
       sender_id: profile.id,
       content,
       channel: selectedConv?.channel || 'web',
     });
+    if (msgError) console.error('Error sending message:', msgError);
 
-    await supabase
+    const { error: convError } = await supabase
       .from('chat_conversations')
       .update({
         last_message_at: new Date().toISOString(),
@@ -178,6 +179,7 @@ const LiveChat = () => {
         assigned_to: profile.id,
       })
       .eq('id', selectedConvId);
+    if (convError) console.error('Error updating conversation:', convError);
 
     // For external channels, send via edge function
     const channel = selectedConv?.channel;

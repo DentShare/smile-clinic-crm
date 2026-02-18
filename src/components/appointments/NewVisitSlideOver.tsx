@@ -90,9 +90,27 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
 
   const [patientPopoverOpen, setPatientPopoverOpen] = useState(false);
 
+  const fetchPatientDoctor = async (patientId: string) => {
+    const { data } = await supabase
+      .from('appointments')
+      .select('doctor_id')
+      .eq('patient_id', patientId)
+      .not('doctor_id', 'is', null)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.doctor_id && !selectedDoctorId) {
+      setSelectedDoctor(data.doctor_id);
+    }
+  };
+
   useEffect(() => {
     if (open && clinic) {
       fetchData();
+      if (preSelectedPatientId && !selectedDoctorId) {
+        fetchPatientDoctor(preSelectedPatientId);
+      }
     }
   }, [open, clinic]);
 
@@ -113,15 +131,28 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
     setIsLoading(true);
 
     try {
-      const [patientsRes, doctorsRes, servicesRes, categoriesRes] = await Promise.all([
+      // Fetch doctor role user_ids to filter out nurses/assistants
+      const [patientsRes, doctorRolesRes, servicesRes, categoriesRes] = await Promise.all([
         supabase.from('patients').select('*').eq('clinic_id', clinic.id).order('full_name'),
-        supabase.from('profiles').select('*').eq('clinic_id', clinic.id).not('specialization', 'is', null),
+        supabase.from('user_roles').select('user_id').eq('role', 'doctor'),
         supabase.from('services').select('*').eq('clinic_id', clinic.id).eq('is_active', true),
         supabase.from('service_categories').select('*').eq('clinic_id', clinic.id).order('sort_order'),
       ]);
 
+      const doctorUserIds = new Set((doctorRolesRes.data || []).map(r => r.user_id));
+
+      // Only fetch profiles that are actual doctors (not nurses/assistants)
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('clinic_id', clinic.id)
+        .eq('is_active', true)
+        .not('specialization', 'is', null);
+
+      const doctorProfiles = (profilesData || []).filter(p => doctorUserIds.has(p.user_id));
+
       if (patientsRes.data) setPatients(patientsRes.data as Patient[]);
-      if (doctorsRes.data) setDoctors(doctorsRes.data as Profile[]);
+      setDoctors(doctorProfiles as Profile[]);
       if (servicesRes.data) setServices(servicesRes.data as Service[]);
       if (categoriesRes.data) setCategories(categoriesRes.data as ServiceCategory[]);
     } catch (error) {
@@ -354,6 +385,7 @@ const NewVisitSlideOver = ({ open, onOpenChange, selectedDate, selectedTime, sel
                                   onSelect={() => {
                                     setSelectedPatient(patient);
                                     setPatientPopoverOpen(false);
+                                    fetchPatientDoctor(patient.id);
                                   }}
                                 >
                                   <Check

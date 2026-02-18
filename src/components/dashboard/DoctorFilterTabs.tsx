@@ -1,5 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Profile } from '@/types/database';
+import { getDoctorColor } from '@/lib/doctor-colors';
 
 interface DoctorFilterTabsProps {
   doctors: Pick<Profile, 'id' | 'full_name' | 'specialization'>[];
@@ -17,11 +18,18 @@ export function DoctorFilterTabs({ doctors, selectedDoctorId, onSelect }: Doctor
         <TabsTrigger value="__all__" className="text-xs px-3 py-1.5">
           Общее
         </TabsTrigger>
-        {doctors.map((doc) => (
-          <TabsTrigger key={doc.id} value={doc.id} className="text-xs px-3 py-1.5">
-            {doc.full_name.split(' ').slice(0, 2).join(' ')}
-          </TabsTrigger>
-        ))}
+        {doctors.map((doc, idx) => {
+          const color = getDoctorColor(idx);
+          return (
+            <TabsTrigger key={doc.id} value={doc.id} className="text-xs px-3 py-1.5 gap-1.5">
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: color.dot }}
+              />
+              {doc.full_name.split(' ').slice(0, 2).join(' ')}
+            </TabsTrigger>
+          );
+        })}
       </TabsList>
     </Tabs>
   );

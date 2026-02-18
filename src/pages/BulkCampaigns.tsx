@@ -43,11 +43,12 @@ const BulkCampaigns = () => {
   }, [clinic?.id]);
 
   const fetchCampaigns = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bulk_campaigns')
       .select('*')
       .eq('clinic_id', clinic!.id)
       .order('created_at', { ascending: false });
+    if (error) console.error('Error fetching campaigns:', error);
     setCampaigns(data || []);
     setIsLoading(false);
   };
@@ -69,7 +70,8 @@ const BulkCampaigns = () => {
         patientsQuery = patientsQuery.lt('balance', 0);
       }
 
-      const { data: matchingPatients } = await patientsQuery.limit(1000);
+      const { data: matchingPatients, error: patientsError } = await patientsQuery.limit(1000);
+      if (patientsError) throw patientsError;
       const recipientIds = matchingPatients?.map(p => p.id) || [];
 
       // Create campaign
@@ -95,7 +97,8 @@ const BulkCampaigns = () => {
           campaign_id: campaign.id,
           patient_id: pid,
         }));
-        await supabase.from('bulk_campaign_recipients').insert(recipients);
+        const { error: recipientError } = await supabase.from('bulk_campaign_recipients').insert(recipients);
+        if (recipientError) console.error('Error inserting recipients:', recipientError);
       }
 
       toast.success(`Рассылка создана: ${recipientIds.length} получателей`);

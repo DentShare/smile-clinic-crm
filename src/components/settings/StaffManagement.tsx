@@ -116,24 +116,38 @@ export function StaffManagement() {
     if (!clinic?.id) return;
 
     try {
-      // FIXED: Use JOIN to fetch profiles with roles in a single query
-      // This eliminates the N+1 query problem
+      // Fetch profiles for this clinic
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles!user_roles_user_id_fkey(role)
-        `)
+        .select('*')
         .eq('clinic_id', clinic.id)
         .order('full_name');
 
       if (profilesError) throw profilesError;
 
-      // Transform the data to match StaffMember interface
+      // Fetch roles for all users in this clinic
+      const userIds = (profiles || []).map(p => p.user_id);
+      let rolesMap: Record<string, string[]> = {};
+
+      if (userIds.length > 0) {
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds);
+
+        if (!rolesError && roles) {
+          rolesMap = roles.reduce((acc: Record<string, string[]>, r) => {
+            if (!acc[r.user_id]) acc[r.user_id] = [];
+            acc[r.user_id].push(r.role);
+            return acc;
+          }, {});
+        }
+      }
+
+      // Combine profiles with roles
       const staffWithRoles: StaffMember[] = (profiles || []).map(p => ({
         ...p,
-        roles: (p.user_roles || []).map((r: any) => r.role as AppRole),
-        user_roles: undefined, // Remove the nested user_roles to match interface
+        roles: (rolesMap[p.user_id] || []) as AppRole[],
       })) as StaffMember[];
 
       setStaff(staffWithRoles);

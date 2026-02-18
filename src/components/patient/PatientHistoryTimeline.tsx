@@ -24,6 +24,13 @@ import { formatCurrency } from '@/lib/formatters';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 import { RefundDialog } from '@/components/finance/RefundDialog';
 
+interface WorkPaymentStatus {
+  performed_work_id: string;
+  total_cost: number;
+  paid_amount: number;
+  status: 'paid' | 'partial' | 'unpaid';
+}
+
 interface Visit {
   id: string;
   start_time: string;
@@ -60,6 +67,7 @@ interface PatientHistoryTimelineProps {
 export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: PatientHistoryTimelineProps) {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [workPaymentMap, setWorkPaymentMap] = useState<Map<string, WorkPaymentStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [refundPayment, setRefundPayment] = useState<Payment | null>(null);
@@ -108,6 +116,17 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
 
       setVisits((visitsRes.data as unknown as Visit[]) || []);
       setPayments((paymentsRes.data as Payment[]) || []);
+
+      // Fetch payment status for performed works
+      const { data: statusData } = await supabase.rpc('get_work_payment_status', {
+        p_patient_id: patientId
+      });
+      if (statusData) {
+        const statusArr = statusData as unknown as WorkPaymentStatus[];
+        const map = new Map<string, WorkPaymentStatus>();
+        statusArr.forEach(s => map.set(s.performed_work_id, s));
+        setWorkPaymentMap(map);
+      }
     } catch (err) {
       console.error('Error fetching history:', err);
     } finally {
@@ -210,7 +229,7 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
               
               {activeTab === 'all' && allItems.map((item, idx) => (
                 item.type === 'visit' ? (
-                  <VisitItem key={`visit-${item.data.id}`} visit={item.data as Visit} />
+                  <VisitItem key={`visit-${item.data.id}`} visit={item.data as Visit} workPaymentMap={workPaymentMap} />
                 ) : (
                   <PaymentItem 
                     key={`payment-${item.data.id}`} 
@@ -227,7 +246,7 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
               )}
               
               {activeTab === 'visits' && visits.map((visit) => (
-                <VisitItem key={visit.id} visit={visit} />
+                <VisitItem key={visit.id} visit={visit} workPaymentMap={workPaymentMap} />
               ))}
 
               {activeTab === 'payments' && payments.length === 0 && (
@@ -267,7 +286,7 @@ export function PatientHistoryTimeline({ patientId, patientName, onRefresh }: Pa
   );
 }
 
-function VisitItem({ visit }: { visit: Visit }) {
+function VisitItem({ visit, workPaymentMap }: { visit: Visit; workPaymentMap: Map<string, WorkPaymentStatus> }) {
   const [expanded, setExpanded] = useState(false);
   const totalCost = visit.performed_works?.reduce((sum, pw) => sum + Number(pw.total), 0) || 0;
   const hasWorks = visit.performed_works && visit.performed_works.length > 0;
@@ -327,23 +346,41 @@ function VisitItem({ visit }: { visit: Visit }) {
       {/* Expanded services list */}
       {expanded && hasWorks && (
         <div className="ml-8 mt-1 mb-2 space-y-1 border-l-2 border-muted pl-3">
-          {visit.performed_works.map((work) => (
-            <div key={work.id} className="flex items-center justify-between text-xs py-1">
-              <div className="flex items-center gap-2 min-w-0">
-                {work.tooth_number && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                    №{work.tooth_number}
-                  </Badge>
-                )}
-                <span className="truncate text-muted-foreground">
-                  {work.service?.name || work.treatment_plan_item?.service_name || 'Услуга'}
+          {visit.performed_works.map((work) => {
+            const payStatus = workPaymentMap.get(work.id);
+            return (
+              <div key={work.id} className="flex items-center justify-between text-xs py-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  {work.tooth_number && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                      №{work.tooth_number}
+                    </Badge>
+                  )}
+                  <span className="truncate text-muted-foreground">
+                    {work.service?.name || work.treatment_plan_item?.service_name || 'Услуга'}
+                  </span>
+                  {payStatus && payStatus.status === 'paid' && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 shrink-0 bg-success/15 text-success border-success/30">
+                      Оплачено
+                    </Badge>
+                  )}
+                  {payStatus && payStatus.status === 'partial' && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 shrink-0 bg-warning/15 text-warning border-warning/30">
+                      Частично
+                    </Badge>
+                  )}
+                  {(!payStatus || payStatus.status === 'unpaid') && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 shrink-0 bg-destructive/15 text-destructive border-destructive/30">
+                      Не оплачено
+                    </Badge>
+                  )}
+                </div>
+                <span className="font-medium shrink-0 ml-2">
+                  {formatCurrency(work.total)}
                 </span>
               </div>
-              <span className="font-medium shrink-0 ml-2">
-                {formatCurrency(work.total)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

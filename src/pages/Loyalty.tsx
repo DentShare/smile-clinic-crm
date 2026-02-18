@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { CurrencyDisplay } from '@/components/ui/currency-display';
 import { toast } from 'sonner';
-import { Gift, Star, Ticket, Loader2, Plus, Save, Trash2, Settings } from 'lucide-react';
+import { Gift, Star, Ticket, Loader2, Plus, Save, Trash2, Settings, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { DiscountCardManager } from '@/components/loyalty/DiscountCardManager';
 
 const Loyalty = () => {
   const { clinic, profile, hasRole } = useAuth();
@@ -150,6 +151,9 @@ const Loyalty = () => {
           </TabsTrigger>
           <TabsTrigger value="vouchers">
             <Ticket className="mr-2 h-4 w-4" />Ваучеры
+          </TabsTrigger>
+          <TabsTrigger value="discount-cards">
+            <CreditCard className="mr-2 h-4 w-4" />Скидочные карты
           </TabsTrigger>
         </TabsList>
 
@@ -382,6 +386,10 @@ const Loyalty = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="discount-cards" className="mt-6">
+          <DiscountCardManager />
         </TabsContent>
       </Tabs>
     </div>

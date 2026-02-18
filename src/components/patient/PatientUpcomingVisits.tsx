@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, User, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/clientRuntime';
-import { format, isFuture, isToday } from 'date-fns';
+import { format, isToday, startOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface Appointment {
@@ -20,21 +20,19 @@ interface Appointment {
 
 interface PatientUpcomingVisitsProps {
   patientId: string;
+  refreshKey?: number;
   onCreateVisit?: () => void;
 }
 
-export function PatientUpcomingVisits({ patientId, onCreateVisit }: PatientUpcomingVisitsProps) {
+export function PatientUpcomingVisits({ patientId, refreshKey, onCreateVisit }: PatientUpcomingVisitsProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUpcomingAppointments();
-  }, [patientId]);
-
-  const fetchUpcomingAppointments = async () => {
+  const fetchUpcomingAppointments = useCallback(async () => {
     setLoading(true);
     try {
-      const now = new Date().toISOString();
+      // Use start of today so today's scheduled/confirmed visits always show
+      const todayStart = startOfDay(new Date()).toISOString();
       const { data, error } = await supabase
         .from('appointments')
         .select(`
@@ -45,7 +43,7 @@ export function PatientUpcomingVisits({ patientId, onCreateVisit }: PatientUpcom
           doctor:doctor_id (full_name)
         `)
         .eq('patient_id', patientId)
-        .gte('start_time', now)
+        .gte('start_time', todayStart)
         .in('status', ['scheduled', 'confirmed'])
         .order('start_time', { ascending: true })
         .limit(5);
@@ -57,7 +55,11 @@ export function PatientUpcomingVisits({ patientId, onCreateVisit }: PatientUpcom
     } finally {
       setLoading(false);
     }
-  };
+  }, [patientId]);
+
+  useEffect(() => {
+    fetchUpcomingAppointments();
+  }, [fetchUpcomingAppointments, refreshKey]);
 
   const getStatusBadge = (status: string, startTime: string) => {
     if (isToday(new Date(startTime))) {
